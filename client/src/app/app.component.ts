@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './auth.service';
+import { ToastService } from './toast.service';
 import { filter } from 'rxjs/operators';
 
 interface Noti { id: string; body: string; link?: string; createdAt: string; read: boolean; }
@@ -114,7 +115,9 @@ interface NavItem {
                     <div class="flex items-center justify-between px-4 py-3 border-b border-base-200">
                       <span class="font-bold text-sm">Thông báo</span>
                       @if (unread() > 0) {
-                        <span class="badge badge-error badge-sm">{{ unread() }} mới</span>
+                        <button (click)="markAllRead()" class="btn btn-ghost btn-xs gap-1 text-error">
+                          <i class="fa-solid fa-check-double fa-xs"></i> Đã đọc tất cả
+                        </button>
                       }
                     </div>
                     <div class="max-h-80 overflow-y-auto divide-y divide-base-200">
@@ -160,6 +163,7 @@ interface NavItem {
 export class AppComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
   private http = inject(HttpClient);
+  private toast = inject(ToastService);
   private router = inject(Router);
 
   notis = signal<Noti[]>([]);
@@ -188,6 +192,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { label: 'Lớp học',        icon: 'fa-chalkboard',     route: '/classes' },
       { label: 'Bài tập',        icon: 'fa-clipboard-list', route: '/assignments' },
       { label: 'Chấm bài',       icon: 'fa-pen-to-square',  route: '/grading' },
+      { label: 'Cấu hình',       icon: 'fa-gear',           route: '/settings' },
     ];
     if (role === 'Teacher') return [
       { label: 'Tổng quan',      icon: 'fa-gauge',          route: '/dashboard' },
@@ -195,6 +200,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { label: 'Lớp học',        icon: 'fa-chalkboard',     route: '/classes' },
       { label: 'Bài tập',        icon: 'fa-clipboard-list', route: '/assignments' },
       { label: 'Chấm bài',       icon: 'fa-pen-to-square',  route: '/grading' },
+      { label: 'Cấu hình',       icon: 'fa-gear',           route: '/settings' },
     ];
     return [
       { label: 'Trang chủ',      icon: 'fa-house',          route: '/home' },
@@ -216,6 +222,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { label: 'Lớp học',         icon: '', route: '/classes' },
       { label: 'Bài tập',         icon: '', route: '/assignments' },
       { label: 'Chấm bài',        icon: '', route: '/grading' },
+      { label: 'Cấu hình',        icon: '', route: '/settings' },
       { label: 'Trang chủ',       icon: '', route: '/home' },
       { label: 'Học bài',         icon: '', route: '/learn' },
       { label: 'Bài tập của tôi', icon: '', route: '/my-assignments' },
@@ -266,6 +273,18 @@ export class AppComponent implements OnInit, OnDestroy {
   toggleNoti() {
     if (!this.notiOpen()) this.loadNotis();
     this.notiOpen.update((v) => !v);
+  }
+
+  /** Đánh dấu toàn bộ thông báo là đã đọc. */
+  markAllRead() {
+    this.http.post<any>('/api/notifications/read-all', {}).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.notis.update((list) => list.map((x) => ({ ...x, read: true })));
+          this.toast.success('Đã đánh dấu tất cả thông báo là đã đọc.');
+        }
+      }
+    });
   }
 
   openNoti(n: Noti) {

@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, inject, OnInit, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +27,7 @@ interface Slide {
         <div class="flex items-center justify-between px-6 py-3 border-b border-slate-800">
           <p class="hanzi text-sm font-bold text-slate-400">{{ lesson.titleZh }} &middot; {{ lesson.titleVi }}</p>
           <div class="flex items-center gap-3 text-sm text-slate-400">
+            <span class="font-mono text-amber-400"><i class="fa-regular fa-clock mr-1"></i>{{ elapsedText() }}</span>
             <span class="badge badge-ghost font-mono">{{ idx() + 1 }}/{{ slides.length }}</span>
             <button (click)="slow = !slow" class="btn btn-ghost btn-xs gap-1" [class.bg-slate-800]="slow">
               <i class="fa-solid fa-gauge"></i> {{ slow ? 'Đọc chậm' : 'Bình thường' }}
@@ -87,7 +88,7 @@ interface Slide {
   `,
   styles: [`.hanzi { font-family: "Noto Sans SC", sans-serif; }`]
 })
-export class PresentComponent implements OnInit {
+export class PresentComponent implements OnInit, OnDestroy {
   lesson: LessonFull | null = null;
   lessonId = '';
   idx = signal(0);
@@ -96,13 +97,21 @@ export class PresentComponent implements OnInit {
   notes = signal<Record<number, string>>({});
   slow = false;
   slides: Slide[] = [];
+  elapsed = 0;
+  private clock: ReturnType<typeof setInterval> | null = null;
 
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private tts = inject(TtsService);
   router = inject(Router);
 
+  elapsedText(): string {
+    const m = Math.floor(this.elapsed / 60), s = this.elapsed % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
   ngOnInit() {
+    this.clock = setInterval(() => this.elapsed++, 1000);
     this.lessonId = this.route.snapshot.paramMap.get('id') ?? '';
     this.http.get<any>(`/api/lessons/${this.lessonId}`).subscribe({
       next: (res) => {
@@ -117,6 +126,10 @@ export class PresentComponent implements OnInit {
         ];
       }
     });
+  }
+
+  ngOnDestroy() {
+    if (this.clock) clearInterval(this.clock);
   }
 
   toggleHide() { this.hideMeaning.update((v) => !v); }

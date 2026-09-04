@@ -9,6 +9,7 @@ using Mapster;
 namespace HanZi.Server.Application.Features.Users;
 
 using HanZi.Server.Application.Features.Users.Dtos;
+using HanZi.Server.Application.Features.Auth.Dtos;
 
 public interface IUserService
 {
@@ -16,9 +17,11 @@ public interface IUserService
     Task<Result<UserListDto>> CreateAsync(UserCreateRequest req, Guid actorId, CancellationToken ct = default);
     Task<Result<UserListDto>> UpdateAsync(Guid id, UserUpdateRequest req, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, Guid actorId, CancellationToken ct = default);
+    /// <summary>Đăng nhập với vai trò này — Admin nhận phiên với tư cách người dùng đích (refresh cũ bị thu hồi).</summary>
+    Task<Result<AuthResponse>> LoginAsAsync(Guid id, CancellationToken ct = default);
 }
 
-public class UserService(IRepository<User> repo, IUnitOfWork uow) : IUserService
+public class UserService(IRepository<User> repo, ITokenService tokens, JwtSettings jwtSettings, IUnitOfWork uow) : IUserService
 {
     public async Task<Result<IReadOnlyList<UserListDto>>> ListAsync(string? role, CancellationToken ct = default)
     {
@@ -91,5 +94,24 @@ public class UserService(IRepository<User> repo, IUnitOfWork uow) : IUserService
         repo.SoftDelete(user);
         await uow.SaveChangesAsync(ct);
         return Result.Ok();
+    }
+
+    public async Task<Result<AuthResponse>> LoginAsAsync(Guid id, CancellationToken ct = default)
+    {
+        var user = await repo.GetByIdAsync(id, ct);
+        if (user is null) return Result<AuthResponse>.Fail("Không tìm thấy người dùng.", "NOT_FOUND");
+        if (user.Locked) return Result<AuthResponse>.Fail("Tài khoản đang bị khoá.", "LOCKED");
+
+        // Mở phiên với tư cách người dùng đích = một lần đăng nhập mới: refresh cũ bị thu hồi
+        user.RefreshToken = tokens.CreateRefreshToken();
+        user.RefreshTokenExpiresAt = tokens.RefreshTokenExpiry(jwtSettings);
+        repo.Update(user);
+        await uow.SaveChangesAsync(ct);
+
+        return Result<AuthResponse>.Ok(new AuthResponse(
+            tokens.CreateAccessToken(user),
+            user.RefreshToken,
+            DateTime.UtcNow.AddMinutes(jwtSettings.AccessTokenMinutes),
+            new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString())));
     }
 }

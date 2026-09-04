@@ -33,4 +33,10 @@ public class UsersController(IUserService service, ICurrentUser currentUser) : C
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         => (await service.DeleteAsync(id, currentUser.UserId ?? Guid.Empty, ct)).ToActionResult();
+
+    /// <summary>Đăng nhập với vai trò này — Admin mở phiên với tư cách người dùng đích.</summary>
+    [HttpPost("{id:guid}/login-as")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> LoginAs(Guid id, CancellationToken ct)
+        => (await service.LoginAsAsync(id, ct)).ToActionResult();
 }

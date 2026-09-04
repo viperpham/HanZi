@@ -5,7 +5,8 @@ public record LessonFullDto(
     string? Description, string Status,
     IReadOnlyList<VocabDto> Vocabularies,
     IReadOnlyList<GrammarDto> GrammarPoints,
-    IReadOnlyList<DialogueDto> DialogueLines);
+    IReadOnlyList<DialogueDto> DialogueLines,
+    IReadOnlyList<SentencePuzzleDto> SentencePuzzles);
 
 public record VocabDto(
     Guid Id, int OrderNo, string Hanzi, string Pinyin, string? Hanviet, string? PartOfSpeech,
@@ -35,8 +36,13 @@ public record DrillUpsertDto(int OrderNo, string Question, IReadOnlyList<string>
 
 public record DialogueUpsertDto(int OrderNo, string Speaker, string Zh, string? Pinyin, string Vi);
 
+public record SentencePuzzleDto(Guid Id, int OrderNo, string Sentence, string? Pinyin, string MeaningVi);
+
+public record SentencePuzzleUpsertDto(int OrderNo, string Sentence, string? Pinyin, string MeaningVi);
+
 public record LessonUpsertRequest(
     Guid CurriculumId, int OrderNo, string TitleVi, string TitleZh, string? Description,
     IReadOnlyList<VocabUpsertDto>? Vocabularies,
     IReadOnlyList<GrammarUpsertDto>? GrammarPoints,
-    IReadOnlyList<DialogueUpsertDto>? DialogueLines);
+    IReadOnlyList<DialogueUpsertDto>? DialogueLines,
+    IReadOnlyList<SentencePuzzleUpsertDto>? SentencePuzzles);

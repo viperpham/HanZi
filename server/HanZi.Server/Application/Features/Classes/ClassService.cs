@@ -22,6 +22,10 @@ public interface IClassService
     Task<Result> SaveAttendanceAsync(Guid classId, DateTime date, IReadOnlyList<AttendanceMarkDto> marks, Guid actorId, CancellationToken ct = default);
     Task<Result<IReadOnlyList<AttendanceMineDto>>> MyAttendanceAsync(Guid classId, Guid studentId, CancellationToken ct = default);
     Task<Result<IReadOnlyList<AttendanceSummaryDto>>> GetAttendanceSummaryAsync(Guid classId, CancellationToken ct = default);
+    /// <summary>Grid tiến độ theo bài: số phần đã học của từng học viên × từng bài học.</summary>
+    Task<Result<LessonProgressDto>> LessonProgressAsync(Guid classId, CancellationToken ct = default);
+    /// <summary>Cập nhật cấu hình lớp.</summary>
+    Task<Result> UpdateAsync(Guid id, ClassUpdateRequest req, CancellationToken ct = default);
 }
 
 public class ClassService(
@@ -30,6 +34,8 @@ public class ClassService(
     IRepository<Assignment> assignments,
     IRepository<User> users,
     IRepository<Attendance> attendances,
+    IRepository<HanZi.Server.Domain.Entities.Progress> progresses,
+    IRepository<Notification> notifications,
     IRepository<ActivityLog> activityLogs,
     IUnitOfWork uow) : IClassService
 {
@@ -109,11 +115,24 @@ public class ClassService(
             .Where(sid => !existing.Any(e => e.StudentId == sid))
             .Distinct().ToList();
 
-        await enrollments.AddRangeAsync(newIds.Select(sid => new Enrollment
+        if (newIds.Count > 0)
         {
-            ClassId = classId,
-            StudentId = sid
-        }), ct);
+            var c = await classes.GetByIdAsync(classId, ct);
+            await enrollments.AddRangeAsync(newIds.Select(sid => new Enrollment
+            {
+                ClassId = classId,
+                StudentId = sid
+            }), ct);
+
+            // thông báo cho từng học viên vừa được thêm vào lớp
+            await notifications.AddRangeAsync(newIds.Select(sid => new Notification
+            {
+                UserId = sid,
+                Body = $"🏫 Bạn đã được thêm vào lớp {c?.Name ?? ""} — mã lớp {c?.Code ?? ""}.",
+                Link = $"/my-class/{classId}"
+            }), ct);
+        }
+
         await uow.SaveChangesAsync(ct);
         return Result.Ok();
     }
@@ -172,6 +191,18 @@ public class ClassService(
         if (e is null) return Result.Fail("Không tìm thấy yêu cầu tham gia.", "NOT_FOUND");
         e.Status = approve ? EnrollmentStatus.Approved : EnrollmentStatus.Rejected;
         enrollments.Update(e);
+
+        if (approve)
+        {
+            var c = await classes.GetByIdAsync(classId, ct);
+            await notifications.AddAsync(new Notification
+            {
+                UserId = studentId,
+                Body = $"✅ Yêu cầu tham gia lớp {c?.Name ?? ""} đã được duyệt.",
+                Link = $"/my-class/{classId}"
+            }, ct);
+        }
+
         await uow.SaveChangesAsync(ct);
         return Result.Ok();
     }
@@ -267,5 +298,56 @@ public class ClassService(
             .OrderBy(s => s.FullName)
             .ToList();
         return Result<IReadOnlyList<AttendanceSummaryDto>>.Ok(result);
+    }
+
+    public async Task<Result<LessonProgressDto>> LessonProgressAsync(Guid classId, CancellationToken ct = default)
+    {
+        var c = await classes.FirstOrDefaultAsync(
+            new Specification<ClassRoom>()
+                .Include("Enrollments.Student")
+                .Include("Curriculum.Lessons")
+                .Where(x => x.Id == classId), ct);
+        if (c is null) return Result<LessonProgressDto>.Fail("Không tìm thấy lớp.", "NOT_FOUND");
+
+        var lessons = c.Curriculum.Lessons
+            .Where(l => !l.IsDeleted).OrderBy(l => l.OrderNo).ToList();
+        var approved = c.Enrollments
+            .Where(e => !e.IsDeleted && e.Status == EnrollmentStatus.Approved)
+            .OrderBy(e => e.Student.FullName).ToList();
+
+        var lessonDtos = lessons.Select(l => new LessonProgressCellDto(l.Id, l.OrderNo, l.TitleZh, 0)).ToList();
+
+        var studentIds = approved.Select(e => e.StudentId).ToList();
+        var lessonIds = lessons.Select(l => l.Id).ToList();
+        var rows = (studentIds.Count > 0 && lessonIds.Count > 0)
+            ? await progresses.ListAsync(
+                new Specification<HanZi.Server.Domain.Entities.Progress>()
+                    .Where(p => studentIds.Contains(p.StudentId) && lessonIds.Contains(p.LessonId)), ct)
+            : [];
+
+        var studentRows = approved.Select(e => new LessonProgressRowDto(
+            e.StudentId, e.Student.FullName,
+            lessons.Select(l => new LessonProgressCellDto(
+                l.Id, l.OrderNo, l.TitleZh,
+                rows.FirstOrDefault(r => r.StudentId == e.StudentId && r.LessonId == l.Id)?.CurrentPart ?? 0))
+                .ToList())).ToList();
+
+        return Result<LessonProgressDto>.Ok(new LessonProgressDto(c.Id, c.Name, lessonDtos, studentRows));
+    }
+
+    public async Task<Result> UpdateAsync(Guid id, ClassUpdateRequest req, CancellationToken ct = default)
+    {
+        var c = await classes.GetByIdAsync(id, ct);
+        if (c is null) return Result.Fail("Không tìm thấy lớp.", "NOT_FOUND");
+        if (!Enum.TryParse<ClassStatus>(req.Status, true, out var status))
+            return Result.Fail($"Trạng thái lớp không hợp lệ: {req.Status}");
+
+        c.Name = req.Name.Trim();
+        c.Schedule = req.Schedule?.Trim();
+        c.Room = req.Room?.Trim();
+        c.Status = status;
+        classes.Update(c);
+        await uow.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 }

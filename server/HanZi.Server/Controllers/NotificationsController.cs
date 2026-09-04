@@ -19,4 +19,9 @@ public class NotificationsController(INotificationService service, ICurrentUser 
     [HttpPost("read")]
     public async Task<IActionResult> MarkRead(MarkReadRequest req, CancellationToken ct)
         => (await service.MarkReadAsync(currentUser.UserId!.Value, req.Id, ct)).ToActionResult();
+
+    /// <summary>Đánh dấu tất cả thông báo là đã đọc.</summary>
+    [HttpPost("read-all")]
+    public async Task<IActionResult> MarkAllRead(CancellationToken ct)
+        => (await service.MarkAllReadAsync(currentUser.UserId!.Value, ct)).ToActionResult();
 }

@@ -27,4 +27,16 @@ public record AttendanceSaveRequest(DateTime Date, IReadOnlyList<AttendanceMarkD
 
 public record AttendanceMineDto(DateTime Date, string Status);
 
+/// <summary>Một ô trong grid tiến độ: số phần đã học (0..5).</summary>
+public record LessonProgressCellDto(Guid LessonId, int OrderNo, string TitleZh, int Parts);
+
+public record LessonProgressRowDto(Guid StudentId, string StudentName, IReadOnlyList<LessonProgressCellDto> Cells);
+
+public record LessonProgressDto(
+    Guid ClassId, string ClassName,
+    IReadOnlyList<LessonProgressCellDto> Lessons,
+    IReadOnlyList<LessonProgressRowDto> Students);
+
+public record ClassUpdateRequest(string Name, string? Schedule, string? Room, string Status);
+
 public record AttendanceSummaryDto(Guid StudentId, string FullName, int Present, int Late, int Absent);

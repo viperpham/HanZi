@@ -1,16 +1,17 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ToastService } from '../toast.service';
 
 interface AnswerDetail {
   questionId: string; orderNo: number; questionType: string; prompt: string; points: number;
   options?: string[]; correctAnswer?: string; sampleAnswer?: string;
-  answerText?: string; autoScore?: number; teacherComment?: string;
+  answerText?: string; autoScore?: number; teacherComment?: string; knowledgeTag?: string;
 }
 interface Note { weakTags: string[]; comment?: string; todos: string[]; sentAt?: string; reply?: string; }
 interface SubDetail {
-  id: string; title?: string; status: string; autoScore: number; manualScore: number; finalScore: number;
+  id: string; title?: string; lessonId?: string; status: string; autoScore: number; manualScore: number; finalScore: number;
   answers: AnswerDetail[]; note?: Note;
 }
 
@@ -23,7 +24,7 @@ const SCORE_COLOR = (score: number) => {
 @Component({
   selector: 'app-my-results',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
     <div class="space-y-6">
 
@@ -158,6 +159,30 @@ const SCORE_COLOR = (score: number) => {
                   </div>
                 }
 
+                <!-- Điểm theo mảng kiến thức -->
+                @if (tagStats(s).length) {
+                  <div class="rounded-xl border border-base-200 p-4">
+                    <p class="text-xs font-bold uppercase tracking-wide text-base-content/40 mb-3 flex items-center gap-1.5">
+                      <i class="fa-solid fa-chart-simple fa-xs"></i> Điểm theo từng phần
+                    </p>
+                    <div class="space-y-2.5">
+                      @for (t of tagStats(s); track t.tag) {
+                        <div>
+                          <div class="flex items-center justify-between text-xs mb-1">
+                            <span class="font-semibold text-base-content/70">{{ t.tag }}</span>
+                            <span class="text-base-content/40">{{ t.got }}/{{ t.max }} điểm</span>
+                          </div>
+                          <progress class="progress h-2 w-full"
+                            [class.progress-success]="t.pct >= 80"
+                            [class.progress-warning]="t.pct >= 50 && t.pct < 80"
+                            [class.progress-error]="t.pct < 50"
+                            [value]="t.pct" max="100"></progress>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
                 <!-- Từng câu trả lời -->
                 @for (ans of s.answers; track ans.questionId; let i = $index) {
                   <div class="rounded-xl border p-4"
@@ -224,12 +249,21 @@ const SCORE_COLOR = (score: number) => {
                       <div class="flex flex-wrap gap-2 mb-4">
                         <span class="text-xs font-semibold text-base-content/50 self-center">Cần cải thiện:</span>
                         @for (t of s.note!.weakTags; track t) {
-                          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
-                                       bg-error/10 text-error border border-error/20">
+                          <a [routerLink]="s.lessonId ? ['/learn', s.lessonId] : '/results'"
+                            [queryParams]="s.lessonId ? { part: weakTagToPart(t) } : null"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
+                                         bg-error/10 text-error border border-error/20 hover:bg-error/20 transition-colors"
+                            title="Mở thẳng mục cần học lại trong bài">
                             <i class="fa-solid fa-circle-xmark fa-xs"></i>{{ t }}
-                          </span>
+                            @if (s.lessonId) { <i class="fa-solid fa-arrow-right fa-xs"></i> }
+                          </a>
                         }
                       </div>
+                      @if (s.lessonId) {
+                        <p class="text-xs text-base-content/40 mb-4">
+                          <i class="fa-solid fa-hand-pointer fa-xs mr-1"></i>Bấm vào thẻ để mở thẳng mục cần học lại trong bài.
+                        </p>
+                      }
                     }
 
                     @if (s.note!.comment) {
@@ -321,6 +355,32 @@ export class MyResultsComponent implements OnInit {
   }
 
   scoreColor(score: number) { return SCORE_COLOR(score); }
+
+  /** Gộp điểm theo mảng kiến thức (KnowledgeTag) của từng câu hỏi. */
+  tagStats(s: SubDetail) {
+    const byTag = new Map<string, { got: number; max: number }>();
+    for (const a of s.answers) {
+      const tag = (a.knowledgeTag ?? '').trim();
+      if (!tag) continue;
+      const cur = byTag.get(tag) ?? { got: 0, max: 0 };
+      cur.max += a.points;
+      cur.got += a.autoScore ?? 0;
+      byTag.set(tag, cur);
+    }
+    return [...byTag.entries()].map(([tag, v]) => ({
+      tag, got: +v.got.toFixed(1), max: +v.max.toFixed(1),
+      pct: v.max > 0 ? Math.round((v.got / v.max) * 100) : 0
+    }));
+  }
+
+  /** Phần bài học cần học lại — suy từ tên mảng kiến thức (Khởi động/Từ mới/Ôn tập/Ngữ pháp/Hội thoại). */
+  weakTagToPart(tag: string): number {
+    const t = tag.toLowerCase();
+    if (/ôn tập|gép|sắp xếp/.test(t)) return 3;
+    if (/ngữ pháp|trật tự/.test(t)) return 4;
+    if (/hội thoại|đọc|phát âm|ghi âm/.test(t)) return 5;
+    return 2; // Từ vựng / điền từ / mặc định
+  }
 
   ngOnInit() { this.load(); }
 

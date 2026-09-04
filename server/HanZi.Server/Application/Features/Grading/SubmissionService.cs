@@ -24,6 +24,8 @@ public interface IGradingService
 {
     Task<Result<SubmissionDetailDto>> GetForTeacherAsync(Guid submissionId, CancellationToken ct = default);
     Task<Result<SubmissionDetailDto>> GradeAsync(Guid submissionId, GradeRequest req, CancellationToken ct = default);
+    /// <summary>Gửi/cập nhật ghi chú riêng cho học viên — không đổi điểm, không đổi trạng thái.</summary>
+    Task<Result> SendNoteAsync(Guid submissionId, NoteRequest req, CancellationToken ct = default);
 }
 
 public class SubmissionService(
@@ -115,7 +117,8 @@ public class SubmissionService(
             await notifications.AddAsync(new Notification
             {
                 UserId = cls.TeacherId,
-                Body = $"{student?.FullName ?? "Học viên"} đã nộp bài tập {a.Title}."
+                Body = $"{student?.FullName ?? "Học viên"} đã nộp bài tập {a.Title}.",
+                Link = $"/grading?assignmentId={a.Id}"
             }, ct);
         }
         await activityLogs.AddAsync(new ActivityLog { ActorId = studentId, Entity = "Submission", EntityId = sub.Id.ToString(), Action = $"Nộp bài tập {a.Title}" }, ct);
@@ -209,6 +212,9 @@ public class SubmissionService(
                 .Track(), ct);
         if (sub is null) return null;
 
+        // LessonId của bài tập — dùng cho link "học lại mục" từ ghi chú của giáo viên
+        var assignment = await assignments.GetByIdAsync(sub.AssignmentId, ct);
+
         var answersList = await answers.ListAsync(
             new Specification<SubmissionAnswer>().Where(x => x.SubmissionId == submissionId), ct);
         var qIds = answersList.Select(a => a.QuestionId).ToList();
@@ -220,7 +226,7 @@ public class SubmissionService(
             : [];
 
         return new SubmissionDetailDto(
-            sub.Id, sub.AssignmentId, sub.StudentId, sub.Student.FullName, sub.Status.ToString(),
+            sub.Id, sub.AssignmentId, assignment?.LessonId, sub.StudentId, sub.Student.FullName, sub.Status.ToString(),
             sub.SubmittedAt, sub.AutoScore, sub.ManualScore, sub.FinalScore,
             qList.Select(q =>
             {
@@ -229,7 +235,7 @@ public class SubmissionService(
                     q.Id, q.OrderNo, q.Type.ToString(), q.Prompt, q.Points,
                     q.Options?.Where(o => !o.IsDeleted).OrderBy(o => o.OrderNo).Select(o => o.Text).ToList(),
                     q.Answer, q.SampleAnswer,
-                    ans?.AnswerText, ans?.AutoScore, ans?.TeacherComment);
+                    ans?.AnswerText, ans?.AutoScore, ans?.TeacherComment, q.KnowledgeTag);
             }).ToList(),
             sub.GradingNote is { IsDeleted: false } n
                 ? new GradingNoteDto(n.WeakTags, n.Comment, n.Todos, n.SentAt, n.Reply)
@@ -310,10 +316,12 @@ public class GradingService(
         await uow.SaveChangesAsync(ct);
 
         // thông báo cho học viên
+        var asgTitle = (await assignments.GetByIdAsync(sub.AssignmentId, ct))?.Title ?? "";
         await notifications.AddAsync(new Notification
         {
             UserId = sub.StudentId,
-            Body = "📩 Giáo viên vừa gửi điểm và ghi chú riêng cho bạn."
+            Body = $"📩 Bài tập {asgTitle} đã được chấm: {sub.FinalScore:0.#}/10 — có ghi chú riêng của giáo viên.",
+            Link = "/results"
         }, ct);
         await activityLogs.AddAsync(new ActivityLog { ActorId = currentUser.UserId, Entity = "Submission", EntityId = sub.Id.ToString(), Action = $"Chấm bài và gửi ghi chú cho {sub.Student.FullName}" }, ct);
         await uow.SaveChangesAsync(ct);
@@ -325,5 +333,52 @@ public class GradingService(
     {
         // GradingService dùng lại builder của SubmissionService qua internal
         return await ((SubmissionService)submissionService).BuildDetailAsync(id, ct);
+    }
+
+    public async Task<Result> SendNoteAsync(Guid submissionId, NoteRequest req, CancellationToken ct = default)
+    {
+        var sub = await submissions.FirstOrDefaultAsync(
+            new Specification<Submission>()
+                .Include("GradingNote")
+                .Where(s => s.Id == submissionId)
+                .Track(), ct);
+        if (sub is null) return Result.Fail("Không tìm thấy bài nộp.", "NOT_FOUND");
+        if (sub.Status == SubmissionStatus.Doing) return Result.Fail("Học viên chưa nộp bài.", "NOT_SUBMITTED");
+
+        if (sub.GradingNote is null || sub.GradingNote.IsDeleted)
+        {
+            var note = new GradingNote
+            {
+                SubmissionId = sub.Id,
+                WeakTags = req.WeakTags,
+                Comment = req.Comment,
+                Todos = req.Todos,
+                SentAt = DateTime.UtcNow
+            };
+            await noteRepo.AddAsync(note, ct);
+            sub.GradingNote = note;
+        }
+        else
+        {
+            sub.GradingNote.WeakTags = req.WeakTags;
+            sub.GradingNote.Comment = req.Comment;
+            sub.GradingNote.Todos = req.Todos;
+            sub.GradingNote.SentAt = DateTime.UtcNow;
+        }
+        await uow.SaveChangesAsync(ct);
+
+        await notifications.AddAsync(new Notification
+        {
+            UserId = sub.StudentId,
+            Body = "✉️ Giáo viên vừa gửi ghi chú riêng cho bạn.",
+            Link = "/results"
+        }, ct);
+        await activityLogs.AddAsync(new ActivityLog
+        {
+            ActorId = currentUser.UserId, Entity = "Submission", EntityId = sub.Id.ToString(),
+            Action = $"Gửi ghi chú riêng cho {sub.Student.FullName}"
+        }, ct);
+        await uow.SaveChangesAsync(ct);
+        return Result.Ok();
     }
 }

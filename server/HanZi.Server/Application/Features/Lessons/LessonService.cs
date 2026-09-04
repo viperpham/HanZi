@@ -20,6 +20,8 @@ public interface ILessonService
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Sinh/bù file âm thanh cho toàn bộ từ, ví dụ, hội thoại còn thiếu của bài học.</summary>
     Task<Result<int>> GenerateAudioAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Đổi thứ tự bài học — hoán đổi OrderNo với bài khác trong cùng giáo trình.</summary>
+    Task<Result> ReorderAsync(Guid id, int direction, CancellationToken ct = default);
 }
 
 public class LessonService(
@@ -31,6 +33,7 @@ public class LessonService(
     IRepository<Drill> drillRepo,
     IRepository<DrillOption> drillOptionRepo,
     IRepository<DialogueLine> dialogueRepo,
+    IRepository<SentencePuzzle> puzzleRepo,
     IAudioService audio,
     IUnitOfWork uow) : ILessonService
 {
@@ -73,8 +76,9 @@ public class LessonService(
             ? await drillOptionRepo.ListAsync(new Specification<DrillOption>().Where(o => drillIds.Contains(o.DrillId)).Order(o => o.OrderNo), ct)
             : [];
         var dialogues = await dialogueRepo.ListAsync(new Specification<DialogueLine>().Where(d => d.LessonId == id).Order(d => d.OrderNo), ct);
+        var puzzles = await puzzleRepo.ListAsync(new Specification<SentencePuzzle>().Where(p => p.LessonId == id).Order(p => p.OrderNo), ct);
 
-        return Result<LessonFullDto>.Ok(ToFull(lesson, vocab, gps, examples, mistakes, drills, drillOpts, dialogues));
+        return Result<LessonFullDto>.Ok(ToFull(lesson, vocab, gps, examples, mistakes, drills, drillOpts, dialogues, puzzles));
     }
 
     // ===== Ghi: tạo / cập nhật (thay thế nội dung con = xoá mềm cũ + thêm mới) =====
@@ -120,6 +124,28 @@ public class LessonService(
         return Result.Ok();
     }
 
+    public async Task<Result> ReorderAsync(Guid id, int direction, CancellationToken ct = default)
+    {
+        var lesson = await lessons.GetByIdAsync(id, ct);
+        if (lesson is null) return Result.Fail("Không tìm thấy bài học.", "NOT_FOUND");
+
+        var siblings = (await lessons.ListAsync(
+            new Specification<Lesson>()
+                .Where(l => l.CurriculumId == lesson.CurriculumId && !l.IsDeleted)
+                .Order(l => l.OrderNo), ct)).ToList();
+
+        var idx = siblings.FindIndex(l => l.Id == id);
+        var j = idx + (direction < 0 ? -1 : 1);
+        if (idx < 0 || j < 0 || j >= siblings.Count)
+            return Result.Fail("Bài học đã ở đầu/cuối danh sách.", "OUT_OF_RANGE");
+
+        (siblings[idx].OrderNo, siblings[j].OrderNo) = (siblings[j].OrderNo, siblings[idx].OrderNo);
+        lessons.Update(siblings[idx]);
+        lessons.Update(siblings[j]);
+        await uow.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
     private async Task ApplyChildrenAsync(Lesson lesson, LessonUpsertRequest req, CancellationToken ct)
     {
         // Ẩn nội dung cũ (xoá mềm) — lịch sử còn trong DB
@@ -140,6 +166,11 @@ public class LessonService(
         }
         var oldDlg = await dialogueRepo.ListAsync(new Specification<DialogueLine>().Where(d => d.LessonId == lesson.Id), ct);
         dialogueRepo.SoftDeleteRange(oldDlg);
+        if (req.SentencePuzzles is not null)
+        {
+            var oldPuzzles = await puzzleRepo.ListAsync(new Specification<SentencePuzzle>().Where(p => p.LessonId == lesson.Id), ct);
+            puzzleRepo.SoftDeleteRange(oldPuzzles);
+        }
 
         // Thêm nội dung mới
         if (req.Vocabularies is not null)
@@ -214,6 +245,16 @@ public class LessonService(
                 d.AudioUrl = await audio.GenerateAsync(d.Zh, ct);
             await dialogueRepo.AddRangeAsync(newDlg, ct);
         }
+
+        if (req.SentencePuzzles is not null)
+        {
+            var newPuzzles = req.SentencePuzzles.Select(p => new SentencePuzzle
+            {
+                LessonId = lesson.Id, OrderNo = p.OrderNo,
+                Sentence = p.Sentence, Pinyin = p.Pinyin, MeaningVi = p.MeaningVi
+            }).ToList();
+            await puzzleRepo.AddRangeAsync(newPuzzles, ct);
+        }
     }
 
     /// <summary>Bù file âm thanh cho bài học hiện có (các từ/câu chưa có audio).</summary>
@@ -252,7 +293,8 @@ public class LessonService(
         Lesson l, IReadOnlyList<Vocabulary> vocab,
         IReadOnlyList<GrammarPoint> gps, IReadOnlyList<GrammarExample> examples,
         IReadOnlyList<CommonMistake> mistakes, IReadOnlyList<Drill> drills,
-        IReadOnlyList<DrillOption> drillOpts, IReadOnlyList<DialogueLine> dialogues) => new(
+        IReadOnlyList<DrillOption> drillOpts, IReadOnlyList<DialogueLine> dialogues,
+        IReadOnlyList<SentencePuzzle> puzzles) => new(
         l.Id, l.CurriculumId, l.OrderNo, l.TitleVi, l.TitleZh, l.Description, l.Status.ToString(),
         vocab.Select(v => new VocabDto(v.Id, v.OrderNo, v.Hanzi, v.Pinyin, v.Hanviet, v.PartOfSpeech,
                 v.MeaningVi, v.Emoji, v.ExampleZh, v.ExamplePinyin, v.ExampleVi, v.AudioUrl, v.InWarmup)).ToList(),
@@ -264,5 +306,6 @@ public class LessonService(
                 d.Id, d.OrderNo, d.Question,
                 drillOpts.Where(o => o.DrillId == d.Id).OrderBy(o => o.OrderNo).Select(o => o.Text).ToList(),
                 d.AnswerIndex)).ToList())).ToList(),
-        dialogues.Select(d => new DialogueDto(d.Id, d.OrderNo, d.Speaker.ToString(), d.Zh, d.Pinyin, d.Vi, d.AudioUrl)).ToList());
+        dialogues.Select(d => new DialogueDto(d.Id, d.OrderNo, d.Speaker.ToString(), d.Zh, d.Pinyin, d.Vi, d.AudioUrl)).ToList(),
+        puzzles.Select(p => new SentencePuzzleDto(p.Id, p.OrderNo, p.Sentence, p.Pinyin, p.MeaningVi)).ToList());
 }

@@ -11,6 +11,8 @@ public interface INotificationService
 {
     Task<Result<IReadOnlyList<NotificationDto>>> ListMineAsync(Guid userId, CancellationToken ct = default);
     Task<Result> MarkReadAsync(Guid userId, Guid id, CancellationToken ct = default);
+    /// <summary>Đánh dấu toàn bộ thông báo của người dùng là đã đọc.</summary>
+    Task<Result> MarkAllReadAsync(Guid userId, CancellationToken ct = default);
 }
 
 public class NotificationService(IRepository<Notification> repo, IUnitOfWork uow) : INotificationService
@@ -36,6 +38,21 @@ public class NotificationService(IRepository<Notification> repo, IUnitOfWork uow
         n.ReadAt = DateTime.UtcNow;
         repo.Update(n);
         await uow.SaveChangesAsync(ct);
+        return Result.Ok();
+    }
+
+    public async Task<Result> MarkAllReadAsync(Guid userId, CancellationToken ct = default)
+    {
+        var unread = await repo.ListAsync(
+            new Specification<Notification>()
+                .Where(x => x.UserId == userId && x.ReadAt == null)
+                .Track(), ct);
+        foreach (var n in unread)
+        {
+            n.ReadAt = DateTime.UtcNow;
+            repo.Update(n);
+        }
+        if (unread.Count > 0) await uow.SaveChangesAsync(ct);
         return Result.Ok();
     }
 }

@@ -42,4 +42,18 @@ public class AssignmentsController(IAssignmentService service) : ControllerBase
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> ListSubmissions(Guid id, CancellationToken ct)
         => (await service.ListSubmissionsAsync(id, ct)).ToActionResult();
+
+    [HttpPost("{id:guid}/remind")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> Remind(Guid id, CancellationToken ct)
+    {
+        var uidClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        _ = Guid.TryParse(uidClaim, out var actorId);
+        return (await service.RemindPendingAsync(id, actorId, ct)).ToActionResult();
+    }
+
+    [HttpGet("{id:guid}/stats")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> Stats(Guid id, CancellationToken ct)
+        => (await service.StatsAsync(id, ct)).ToActionResult();
 }

@@ -11,6 +11,7 @@ interface Upcoming { assignmentId: string; title: string; classId: string; class
 interface SClass { id: string; name: string; teacherName: string; schedule?: string; room?: string; curriculumName: string; lessonCount: number; lessonsStudied: number; progressPercent: number; }
 interface StudentHome {
   assignmentsPending: number; lessonsStudied: number; avgScore: number; streakDays: number;
+  recentNoteCount?: number;
   continue?: Continue; upcoming: Upcoming[]; classes: SClass[];
 }
 
@@ -72,6 +73,19 @@ interface StudentHome {
           <div class="stat-desc">Ngày liên tiếp</div>
         </div>
       </div>
+
+      <!-- Alert: ghi chú chấm bài mới từ giáo viên -->
+      @if ((data?.recentNoteCount ?? 0) > 0) {
+        <a routerLink="/results"
+          class="alert bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 transition-colors cursor-pointer">
+          <i class="fa-solid fa-comment-dots text-lg"></i>
+          <span class="text-sm">
+            <b>Giáo viên vừa gửi ghi chú cho bạn</b> — {{ data!.recentNoteCount }} ghi chú chấm bài trong 3 ngày qua.
+            <span class="font-bold underline">Xem ngay</span>
+          </span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </a>
+      }
 
       <!-- Continue Learning Banner -->
       @if (data?.continue; as c) {

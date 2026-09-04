@@ -5,10 +5,11 @@ import { ToastService } from '../toast.service';
 import { ModalService } from '../modal.service';
 import { pinyin } from 'pinyin-pro';
 
-interface Vocab { id: string; orderNo: number; hanzi: string; pinyin: string; meaningVi: string; emoji?: string; inWarmup: boolean; }
+interface Vocab { id: string; orderNo: number; hanzi: string; pinyin: string; hanviet?: string; partOfSpeech?: string; meaningVi: string; emoji?: string; inWarmup: boolean; }
 interface Grammar { id: string; orderNo: number; title: string; formula?: string; explanation?: string; examples: any[]; mistakes: any[]; drills: any[]; }
 interface Dialogue { id: string; orderNo: number; speaker: string; zh: string; pinyin?: string; vi: string; }
-interface LessonFull { id: string; curriculumId: string; titleVi: string; titleZh: string; description?: string; vocabularies: Vocab[]; grammarPoints: Grammar[]; dialogueLines: Dialogue[]; }
+interface Puzzle { id: string; orderNo: number; sentence: string; pinyin?: string; meaningVi: string; }
+interface LessonFull { id: string; curriculumId: string; orderNo: number; titleVi: string; titleZh: string; description?: string; vocabularies: Vocab[]; grammarPoints: Grammar[]; dialogueLines: Dialogue[]; sentencePuzzles: Puzzle[]; }
 
 @Component({
   selector: 'app-lesson-detail',
@@ -24,9 +25,20 @@ interface LessonFull { id: string; curriculumId: string; titleVi: string; titleZ
             <h1 class="hanzi text-2xl font-extrabold text-base-content">{{ l.titleZh }} &middot; {{ l.titleVi }}</h1>
             <p class="text-sm text-base-content/50 mt-1">{{ l.description || 'Chi tiết bài học và quản lý nội dung' }}</p>
           </div>
-          <a routerLink="/present/{{ l.id }}" class="btn btn-neutral btn-sm gap-2">
-            <i class="fa-solid fa-desktop"></i> Trình chiếu
-          </a>
+          <div class="flex flex-wrap gap-2">
+            <button (click)="reorder(l, -1)" title="Đưa bài lên trên" class="btn btn-ghost btn-sm btn-square">
+              <i class="fa-solid fa-arrow-up"></i>
+            </button>
+            <button (click)="reorder(l, 1)" title="Đưa bài xuống dưới" class="btn btn-ghost btn-sm btn-square">
+              <i class="fa-solid fa-arrow-down"></i>
+            </button>
+            <button (click)="editInfo(l)" class="btn btn-outline btn-sm gap-2">
+              <i class="fa-solid fa-pencil"></i> Sửa thông tin
+            </button>
+            <a routerLink="/present/{{ l.id }}" class="btn btn-neutral btn-sm gap-2">
+              <i class="fa-solid fa-desktop"></i> Trình chiếu
+            </a>
+          </div>
         </div>
 
         <!-- Section 1 & 2: Từ mới -->
@@ -194,7 +206,49 @@ interface LessonFull { id: string; curriculumId: string; titleVi: string; titleZ
           </div>
         </div>
 
-        <!-- Section 4: Hội thoại -->
+        <!-- Section 4: Ôn tập — Sắp xếp câu -->
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+          <div class="card-body p-5">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+              <h2 class="font-bold text-base text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-shuffle text-error"></i>
+                Ôn tập — Sắp xếp câu <span class="badge badge-ghost badge-sm font-bold">{{ l.sentencePuzzles?.length ?? 0 }}</span>
+              </h2>
+              <button (click)="addPuzzle()" class="btn btn-error btn-sm text-white gap-1.5">
+                <i class="fa-solid fa-plus"></i> Thêm câu
+              </button>
+            </div>
+            <p class="text-xs text-base-content/40 mt-2">
+              Học viên sẽ bấm các thẻ từ để ghép đúng câu. Cách các từ bằng dấu cách trong câu tiếng Trung.
+            </p>
+            <div class="space-y-2 mt-3">
+              @for (p of l.sentencePuzzles; track p.id) {
+                <div class="flex items-center gap-3 rounded-xl border border-base-200 px-4 py-2.5 hover:bg-base-200/50 transition-colors">
+                  <span class="grid h-6 w-6 place-items-center rounded-lg bg-error/10 text-xs font-bold text-error shrink-0">{{ p.orderNo }}</span>
+                  <div class="min-w-0 flex-1">
+                    <p class="hanzi font-semibold text-base-content text-sm">{{ p.sentence }}</p>
+                    @if (p.pinyin) { <p class="text-xs text-error">{{ p.pinyin }}</p> }
+                    <p class="text-xs text-base-content/50">&mdash; {{ p.meaningVi }}</p>
+                  </div>
+                  <div class="flex items-center gap-0.5">
+                    <button (click)="editPuzzle(p)" title="Sửa"
+                      class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-base-content">
+                      <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <button (click)="delPuzzle(p)" title="Xoá"
+                      class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-error">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="text-xs text-base-content/40 italic py-4 text-center">Chưa có câu sắp xếp nào.</p>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: Hội thoại -->
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
             <div class="flex items-center justify-between border-b border-base-200 pb-3">
@@ -266,8 +320,8 @@ export class LessonDetailComponent implements OnInit {
     const l = this.lesson!;
     this.http.put<any>(`http://localhost:5000/api/lessons/${l.id}`, {
       curriculumId: l.curriculumId,
-      orderNo: 1, titleVi: l.titleVi, titleZh: l.titleZh, description: l.description,
-      vocabularies: l.vocabularies.map((v, i) => ({ orderNo: i + 1, hanzi: v.hanzi, pinyin: v.pinyin, meaningVi: v.meaningVi, emoji: v.emoji, inWarmup: v.inWarmup })),
+      orderNo: l.orderNo ?? 1, titleVi: l.titleVi, titleZh: l.titleZh, description: l.description,
+      vocabularies: l.vocabularies.map((v, i) => ({ orderNo: i + 1, hanzi: v.hanzi, pinyin: v.pinyin, hanviet: (v as any).hanviet ?? null, partOfSpeech: (v as any).partOfSpeech ?? null, meaningVi: v.meaningVi, emoji: v.emoji, inWarmup: v.inWarmup })),
       grammarPoints: l.grammarPoints.map((g, i) => ({
         orderNo: i + 1, title: g.title, formula: g.formula, explanation: g.explanation,
         examples: g.examples.map((e: any, ei: number) => ({ orderNo: ei + 1, zh: e.zh, pinyin: e.pinyin, vi: e.vi })),
@@ -275,11 +329,76 @@ export class LessonDetailComponent implements OnInit {
         drills: (g.drills ?? []).map((d: any, di: number) => ({ orderNo: di + 1, question: d.question, options: (d.options ?? []).map((o: any) => o.text ?? o), answerIndex: d.answerIndex }))
       })),
       dialogueLines: l.dialogueLines.map((d, i) => ({ orderNo: i + 1, speaker: d.speaker, zh: d.zh, pinyin: d.pinyin, vi: d.vi })),
+      sentencePuzzles: (l.sentencePuzzles ?? []).map((p, i) => ({ orderNo: i + 1, sentence: p.sentence, pinyin: p.pinyin, meaningVi: p.meaningVi })),
       ...payload
     }).subscribe({
       next: (res) => { if (res.success) { done(); this.load(); } else this.toast.error(res.error!); },
       error: (e) => this.toast.error(e.error?.error ?? 'Lưu thất bại')
     });
+  }
+
+  /** Sửa thông tin chung của bài học (tên Hán/Việt, mô tả). */
+  async editInfo(l: LessonFull) {
+    const r = await this.modal.form({
+      title: 'Sửa thông tin bài học', confirmText: 'Lưu',
+      fields: [
+        { key: 'titleZh', label: 'Tên tiếng Trung', value: l.titleZh },
+        { key: 'titleVi', label: 'Tên tiếng Việt', value: l.titleVi },
+        { key: 'description', label: 'Mô tả', type: 'textarea', value: l.description ?? '' }
+      ]
+    });
+    if (!r) return;
+    if (!r['titleVi'].trim() || !r['titleZh'].trim()) { this.toast.error('Cần nhập cả tên tiếng Trung và tiếng Việt.'); return; }
+    l.titleVi = r['titleVi'];
+    l.titleZh = r['titleZh'];
+    l.description = r['description'];
+    this.saveChildren({}, () => this.toast.success('Đã lưu thông tin bài.'));
+  }
+
+  /** Đổi thứ tự bài học trong giáo trình — học viên nhìn thấy thứ tự này. */
+  async reorder(l: LessonFull, dir: -1 | 1) {
+    const res = await this.http.post<any>(`http://localhost:5000/api/lessons/${l.id}/reorder`, dir).toPromise();
+    if (res?.success) { this.toast.success('Đã đổi thứ tự bài học.'); this.load(); }
+    else this.toast.error(res?.error ?? 'Không đổi được thứ tự.');
+  }
+
+  async addPuzzle() {
+    const r = await this.modal.form({
+      title: 'Thêm câu sắp xếp', confirmText: 'Thêm',
+      fields: [
+        { key: 'sentence', label: 'Câu tiếng Trung (cách các từ bằng dấu cách)', placeholder: 'VD: 我 在 医院 工作 。' },
+        { key: 'pinyin', label: 'Phiên âm', placeholder: 'VD: Wǒ zài yīyuàn gōngzuò.' },
+        { key: 'meaningVi', label: 'Nghĩa tiếng Việt', placeholder: 'VD: Mình làm việc ở bệnh viện.' }
+      ]
+    });
+    if (!r || !this.lesson) return;
+    if (!r['sentence'].trim() || !r['meaningVi'].trim()) { this.toast.error('Cần nhập câu và nghĩa tiếng Việt.'); return; }
+    this.lesson.sentencePuzzles = this.lesson.sentencePuzzles ?? [];
+    this.lesson.sentencePuzzles.push({
+      id: '', orderNo: this.lesson.sentencePuzzles.length + 1,
+      sentence: r['sentence'], pinyin: r['pinyin'], meaningVi: r['meaningVi']
+    });
+    this.saveChildren({}, () => {});
+  }
+
+  async editPuzzle(p: Puzzle) {
+    const r = await this.modal.form({
+      title: 'Sửa câu sắp xếp', confirmText: 'Lưu',
+      fields: [
+        { key: 'sentence', label: 'Câu tiếng Trung (cách các từ bằng dấu cách)', value: p.sentence },
+        { key: 'pinyin', label: 'Phiên âm', value: p.pinyin ?? '' },
+        { key: 'meaningVi', label: 'Nghĩa tiếng Việt', value: p.meaningVi }
+      ]
+    });
+    if (!r) return;
+    p.sentence = r['sentence']; p.pinyin = r['pinyin']; p.meaningVi = r['meaningVi'];
+    this.saveChildren({}, () => {});
+  }
+
+  async delPuzzle(p: Puzzle) {
+    if (!this.lesson) return;
+    this.lesson.sentencePuzzles = (this.lesson.sentencePuzzles ?? []).filter(x => x !== p);
+    this.saveChildren({}, () => {});
   }
 
   async addVocab() {
@@ -288,6 +407,8 @@ export class LessonDetailComponent implements OnInit {
       fields: [
         { key: 'hanzi', label: 'Chữ Hán', placeholder: 'VD: 你好' },
         { key: 'pinyin', label: 'Phiên âm', placeholder: 'Để trống để tự điền' },
+        { key: 'hanviet', label: 'Hán Việt', placeholder: 'VD:npos hảo (tùy chọn)' },
+        { key: 'partOfSpeech', label: 'Từ loại', placeholder: 'VD: danh từ / động từ / tính từ' },
         { key: 'meaningVi', label: 'Nghĩa tiếng Việt', placeholder: 'VD: xin chào' },
         { key: 'emoji', label: 'Emoji (tùy chọn)', placeholder: 'VD: 👋' }
       ]
@@ -298,7 +419,8 @@ export class LessonDetailComponent implements OnInit {
     const pinyinAuto = r['pinyin'].trim() || pinyin(hanzi, { type: 'array' }).join(' ');
     this.lesson.vocabularies.push({
       id: '', orderNo: this.lesson.vocabularies.length + 1,
-      hanzi, pinyin: pinyinAuto, meaningVi: r['meaningVi'], emoji: r['emoji'], inWarmup: false
+      hanzi, pinyin: pinyinAuto, hanviet: r['hanviet'] ?? '', partOfSpeech: r['partOfSpeech'] ?? '',
+      meaningVi: r['meaningVi'], emoji: r['emoji'], inWarmup: false
     });
     this.saveChildren({}, () => {});
   }
@@ -307,22 +429,23 @@ export class LessonDetailComponent implements OnInit {
     const r = await this.modal.form({
       title: 'Nhập từ vựng (Excel/CSV)', confirmText: 'Nhập',
       fields: [{
-        key: 'csv', label: 'Dán dữ liệu — mỗi dòng: chữ Hán, phiên âm, nghĩa, emoji',
+        key: 'csv', label: 'Dán dữ liệu — mỗi dòng: chữ Hán, phiên âm, nghĩa, emoji, từ loại, Hán Việt',
         type: 'textarea',
-        placeholder: '你好, nǐ hǎo, xin chào, 👋\n谢谢, xièxie, cảm ơn, 🙏'
+        placeholder: '你好, nǐ hǎo, xin chào, 👋, đại từ, hảo\n谢谢, xièxie, cảm ơn, 🙏, động từ, tạ tạ'
       }],
     });
     if (!r || !this.lesson) return;
     const rows = r['csv'].split('\n').map((line) => line.split(',').map((s) => s.trim())).filter((cols) => cols[0]);
     let added = 0;
     for (const cols of rows) {
-      const [hanzi, p, vi, emoji] = cols;
+      const [hanzi, p, vi, emoji, pos, hv] = cols;
       this.lesson.vocabularies.push({
         id: '', orderNo: this.lesson.vocabularies.length + 1,
         hanzi,
         pinyin: p || pinyin(hanzi, { type: 'array' }).join(' '),
-        meaningVi: vi ?? '', emoji: emoji ?? '', inWarmup: false
-      });
+        meaningVi: vi ?? '', emoji: emoji ?? '', inWarmup: false,
+        partOfSpeech: pos ?? '', hanviet: hv ?? ''
+      } as any);
       added++;
     }
     if (added) {
@@ -343,6 +466,8 @@ export class LessonDetailComponent implements OnInit {
       fields: [
         { key: 'hanzi', label: 'Chữ Hán', value: v.hanzi },
         { key: 'pinyin', label: 'Phiên âm (bỏ trống sẽ tự điền lại)', value: v.pinyin },
+        { key: 'hanviet', label: 'Hán Việt', value: (v as any).hanviet ?? '' },
+        { key: 'partOfSpeech', label: 'Từ loại', value: (v as any).partOfSpeech ?? '' },
         { key: 'meaningVi', label: 'Nghĩa tiếng Việt', value: v.meaningVi },
         { key: 'emoji', label: 'Emoji (tùy chọn)', value: v.emoji ?? '' }
       ]
@@ -352,6 +477,8 @@ export class LessonDetailComponent implements OnInit {
     if (!hanzi) { this.toast.error('Cần nhập chữ Hán.'); return; }
     v.hanzi = hanzi;
     v.pinyin = r['pinyin'].trim() || pinyin(hanzi, { type: 'array' }).join(' ');
+    (v as any).hanviet = r['hanviet'];
+    (v as any).partOfSpeech = r['partOfSpeech'];
     v.meaningVi = r['meaningVi'];
     v.emoji = r['emoji'];
     this.saveChildren({}, () => {});

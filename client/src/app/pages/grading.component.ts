@@ -11,7 +11,7 @@ interface SubRow { id: string; studentName: string; status: string; autoScore: n
 interface AnswerDetail {
   questionId: string; orderNo: number; questionType: string; prompt: string; points: number;
   options?: string[]; correctAnswer?: string; sampleAnswer?: string;
-  answerText?: string; autoScore?: number; teacherComment?: string;
+  answerText?: string; autoScore?: number; teacherComment?: string; knowledgeTag?: string;
 }
 interface SubDetail {
   id: string; studentName: string; status: string; submittedAt?: string;
@@ -24,6 +24,18 @@ const TYPE_LABEL: Record<string, string> = {
   Writing: 'Viết đoạn', Record: 'Ghi âm', Photo: 'Nộp ảnh'
 };
 const isManual = (t: string) => ['Writing', 'Record', 'Photo'].includes(t);
+
+/** Mảng kiến thức suy ra từ dạng câu hỏi — dùng cho "gợi ý phần chưa đạt". */
+const TYPE_TAG: Record<string, string> = {
+  MultipleChoice: 'Từ vựng', Fill: 'Điền từ', Order: 'Trật tự câu', Match: 'Từ vựng'
+};
+
+/** Mẫu nhận xét chèn nhanh vào ô nhận xét chung. */
+const TEMPLATES = [
+  { label: 'Khen + nhắc', text: 'Em nắm chắc phần từ vựng, nhưng cần luyện thêm phần ngữ pháp.' },
+  { label: 'Lỗi lặp lại', text: 'Lỗi này lặp lại ở nhiều câu, em xem kỹ lại mục ngữ pháp nhé.' },
+  { label: 'Việc cần làm', text: 'Trước buổi sau em hãy làm lại phần Ôn tập của bài này.' }
+];
 
 @Component({
   selector: 'app-grading',
@@ -291,6 +303,10 @@ const isManual = (t: string) => ['Writing', 'Record', 'Photo'].includes(t);
             <i class="fa-solid fa-arrow-left"></i> Danh sách
           </button>
           <div class="h-5 w-px bg-base-300"></div>
+          <button (click)="navStudent(-1)" [disabled]="studentIndex() <= 0"
+            class="btn btn-ghost btn-sm btn-square" title="Học viên trước">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
           <div class="flex items-center gap-3 flex-1 flex-wrap">
             <div class="w-9 h-9 rounded-full bg-gradient-to-br from-error/20 to-rose-400/20
                         text-error text-sm font-bold flex items-center justify-center border border-error/15">
@@ -314,6 +330,11 @@ const isManual = (t: string) => ['Writing', 'Record', 'Photo'].includes(t);
               </span>
             }
           </div>
+          <span class="text-xs font-semibold text-base-content/40">{{ studentIndex() + 1 }}/{{ gradeableCount() }}</span>
+          <button (click)="navStudent(1)" [disabled]="studentIndex() >= gradeableCount() - 1"
+            class="btn btn-ghost btn-sm btn-square" title="Học viên sau">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
         </div>
 
         <!-- Score Summary -->
@@ -466,12 +487,26 @@ const isManual = (t: string) => ['Writing', 'Record', 'Photo'].includes(t);
                   [(ngModel)]="manualScore" class="input" />
               </label>
               <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Phần chưa đạt (cách nhau bằng ;)</span>
+                <span class="label-text text-sm font-semibold mb-1 flex items-center justify-between">
+                  <span>Phần chưa đạt (cách nhau bằng ;)</span>
+                  <button type="button" (click)="suggestWeakTags()"
+                    class="btn btn-ghost btn-xs text-warning gap-1">
+                    <i class="fa-solid fa-wand-magic-sparkles fa-xs"></i> Gợi ý theo câu sai
+                  </button>
+                </span>
                 <input [(ngModel)]="weakTags" placeholder="Ngữ pháp Bài 1;Phiên âm"
                   class="input" />
               </label>
               <label class="form-control sm:col-span-2">
                 <span class="label-text text-sm font-semibold mb-1">Nhận xét chung</span>
+                <div class="flex flex-wrap gap-1.5 mb-1.5">
+                  @for (t of templates; track t.label) {
+                    <button type="button" (click)="appendTemplate(t.text)"
+                      class="btn btn-ghost btn-xs border border-base-200 gap-1 text-base-content/60">
+                      <i class="fa-regular fa-comment-dots fa-xs"></i> {{ t.label }}
+                    </button>
+                  }
+                </div>
                 <textarea [(ngModel)]="comment" rows="2" class="textarea"
                   placeholder="VD: Em làm tốt, cần ôn lại trật tự từ."></textarea>
               </label>
@@ -481,7 +516,12 @@ const isManual = (t: string) => ['Writing', 'Record', 'Photo'].includes(t);
                   class="input" />
               </label>
             </div>
-            <div class="flex justify-end pt-1">
+            <div class="flex flex-wrap justify-end gap-2 pt-1">
+              <button type="button" (click)="openBulkApply()"
+                class="btn btn-ghost gap-2 border border-base-200"
+                [disabled]="!comment.trim()">
+                <i class="fa-solid fa-users"></i> Áp dụng cho HV cùng lỗi
+              </button>
               <button (click)="submitGrade()" [disabled]="saving"
                 class="btn btn-error text-white gap-2 px-6">
                 <i class="fa-solid fa-paper-plane"></i>
@@ -490,6 +530,50 @@ const isManual = (t: string) => ['Writing', 'Record', 'Photo'].includes(t);
             </div>
           </div>
         </div>
+
+        <!-- Modal áp dụng ghi chú cho các học viên cùng lỗi -->
+        @if (bulkOpen) {
+          <div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" (click)="bulkOpen = false">
+            <div class="bg-base-100 rounded-2xl shadow-xl border border-base-200 w-full max-w-md" (click)="$event.stopPropagation()">
+              <div class="p-4 border-b border-base-200 flex items-center gap-2">
+                <i class="fa-solid fa-users text-error"></i>
+                <h3 class="font-bold">Áp dụng ghi chú cho học viên cùng lỗi</h3>
+                <button class="btn btn-ghost btn-xs btn-circle ml-auto" (click)="bulkOpen = false">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div class="p-4 space-y-2 max-h-72 overflow-y-auto">
+                @if (bulkCandidates().length) {
+                  <div class="alert bg-warning/10 border-warning/20 text-warning text-xs mb-3">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Ghi chú gửi cho từng em <b>riêng biệt</b> — không ai thấy của ai. Điểm số không bị thay đổi.</span>
+                  </div>
+                  @for (s of bulkCandidates(); track s.id) {
+                    <label class="flex items-center gap-3 rounded-lg border border-base-200 px-3 py-2 cursor-pointer hover:bg-base-50">
+                      <input type="checkbox" class="checkbox checkbox-sm checkbox-error"
+                        [checked]="bulkSel[s.id]" (change)="bulkSel[s.id] = !bulkSel[s.id]" />
+                      <span class="text-sm font-semibold">{{ s.studentName }}</span>
+                      <span class="text-xs text-base-content/40 ml-auto">{{ s.autoScore }}/10</span>
+                    </label>
+                  }
+                } @else {
+                  <p class="text-sm text-base-content/40 text-center py-6">
+                    Không có học viên nào khác đã nộp bài này.
+                  </p>
+                }
+              </div>
+              <div class="p-4 border-t border-base-200 flex justify-end gap-2">
+                <button class="btn btn-ghost btn-sm" (click)="bulkOpen = false">Huỷ</button>
+                <button class="btn btn-error btn-sm text-white gap-1.5"
+                  [disabled]="!hasBulkPicked() || bulkSending"
+                  (click)="sendBulkNotes()">
+                  <i class="fa-solid fa-paper-plane"></i>
+                  Gửi cho {{ bulkPickedCount() }} học viên
+                </button>
+              </div>
+            </div>
+          </div>
+        }
 
       }
     </div>
@@ -510,6 +594,11 @@ export class GradingComponent implements OnInit {
   comment = '';
   todos = '';
   saving = false;
+
+  templates = TEMPLATES;
+  bulkOpen = false;
+  bulkSel: Record<string, boolean> = {};
+  bulkSending = false;
 
   private http = inject(HttpClient);
   private toast = inject(ToastService);
@@ -605,6 +694,89 @@ export class GradingComponent implements OnInit {
   }
 
   close() { this.detail = null; }
+
+  /** Danh sách bài nộp đã nộp (làm cơ sở điều hướng trước/sau). */
+  gradeableSubs() { return this.subs.filter(s => s.status !== 'Doing'); }
+  gradeableCount() { return this.gradeableSubs().length; }
+  studentIndex() {
+    if (!this.detail) return 0;
+    return this.gradeableSubs().findIndex(s => s.id === this.detail!.id);
+  }
+
+  /** Chuyển tới bài nộp trước/sau (ưu tiên bài còn chờ chấm khi đi tới). */
+  navStudent(dir: -1 | 1) {
+    const list = this.gradeableSubs();
+    const i = this.studentIndex();
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    this.open(list[j]);
+  }
+
+  /** Chèn mẫu nhận xét vào cuối ô nhận xét chung. */
+  appendTemplate(text: string) {
+    this.comment = (this.comment ? this.comment.replace(/\s*$/, ' ') : '') + text;
+  }
+
+  /** Gợi ý phần chưa đạt từ các câu tự chấm mà học viên trả lời sai. */
+  suggestWeakTags() {
+    if (!this.detail) return;
+    const tags = new Set<string>();
+    for (const a of this.detail.answers) {
+      if (isManual(a.questionType)) continue;
+      if (a.answerText && (a.autoScore ?? 0) === 0) {
+        const tag = (a.knowledgeTag ?? '').trim() || TYPE_TAG[a.questionType];
+        if (tag) tags.add(tag);
+      }
+    }
+    if (!tags.size) {
+      this.toast.info('Học viên không sai câu tự chấm nào.');
+      return;
+    }
+    const current = this.weakTags.split(';').map(x => x.trim()).filter(Boolean);
+    const merged = [...new Set([...current, ...tags])];
+    this.weakTags = merged.join(';');
+    this.toast.success(`Đã gợi ý ${tags.size} phần chưa đạt dựa trên câu sai.`);
+  }
+
+  /** Học viên khác đã nộp cùng bài — ứng viên nhận ghi chú hàng loạt. */
+  bulkCandidates() {
+    return this.subs.filter(s => s.id !== this.detail?.id && s.status !== 'Doing');
+  }
+
+  bulkPickedCount() { return this.bulkCandidates().filter(s => this.bulkSel[s.id]).length; }
+  hasBulkPicked() { return this.bulkPickedCount() > 0; }
+
+  openBulkApply() {
+    if (!this.detail || !this.comment.trim()) return;
+    this.bulkSel = {};
+    this.bulkOpen = true;
+  }
+
+  /** Gửi ghi chú (không đổi điểm) cho các học viên được chọn. */
+  sendBulkNotes() {
+    const picked = this.bulkCandidates().filter(s => this.bulkSel[s.id]);
+    if (!picked.length) return;
+    this.bulkSending = true;
+    const payload = {
+      weakTags: this.weakTags.split(';').map(x => x.trim()).filter(Boolean),
+      comment: this.comment.trim(),
+      todos: []
+    };
+    let done = 0;
+    const next = () => {
+      if (done >= picked.length) {
+        this.toast.success(`Đã gửi ghi chú cho ${picked.length} học viên.`);
+        this.bulkOpen = false;
+        this.bulkSending = false;
+        this.loadSubs();
+        return;
+      }
+      const s = picked[done++];
+      this.http.post<any>(`http://localhost:5000/api/grading/submissions/${s.id}/note`, payload)
+        .subscribe({ next: () => next(), error: () => next() });
+    };
+    next();
+  }
 
   submitGrade() {
     if (!this.detail) return;

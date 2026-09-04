@@ -18,6 +18,9 @@ public class Assignment : FullAuditedEntity
     public bool Shuffle { get; set; }
     public Guid? CreatedBy { get; set; }
 
+    /// <summary>Học viên bị loại khỏi việc nhận bài tập — chuỗi Guid ngăn cách bởi dấu phẩy, rỗng = cả lớp.</summary>
+    public string? ExcludedStudentIds { get; set; }
+
     public ClassRoom Class { get; set; } = null!;
     public Lesson Lesson { get; set; } = null!;
     public ICollection<Question> Questions { get; set; } = [];

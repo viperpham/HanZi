@@ -15,6 +15,9 @@ public class Question : FullAuditedEntity
     public string? Answer { get; set; }
     public string? SampleAnswer { get; set; }
 
+    /// <summary>Mảng kiến thức gắn với câu hỏi (VD: Từ vựng, Ngữ pháp Bài 1) — dùng thống kê điểm theo mảng.</summary>
+    public string? KnowledgeTag { get; set; }
+
     public Assignment Assignment { get; set; } = null!;
     public ICollection<QuestionOption> Options { get; set; } = [];
 }

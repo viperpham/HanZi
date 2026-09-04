@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, AuditSaveChang
     public DbSet<Drill> Drills => Set<Drill>();
     public DbSet<DrillOption> DrillOptions => Set<DrillOption>();
     public DbSet<DialogueLine> DialogueLines => Set<DialogueLine>();
+    public DbSet<SentencePuzzle> SentencePuzzles => Set<SentencePuzzle>();
     public DbSet<ClassRoom> Classes => Set<ClassRoom>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<Assignment> Assignments => Set<Assignment>();

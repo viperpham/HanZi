@@ -31,6 +31,17 @@ export class AuthService {
     );
   }
 
+  /**
+   * Đăng nhập với vai trò khác (login-as) — thay phiên hiện tại bằng phiên của người dùng đích.
+   * Phiên cũ của Admin bị thay thế; đăng xuất và đăng nhập lại để quay về.
+   */
+  assume(accessToken: string, refreshToken: string, user: UserInfo) {
+    localStorage.setItem('hz_token', accessToken);
+    localStorage.setItem('hz_refresh', refreshToken);
+    localStorage.setItem('hz_user', JSON.stringify(user));
+    this.user.set(user);
+  }
+
   logout() {
     // Thu hồi refresh token phía server (fire-and-forget) trước khi xoá local
     if (this.isLoggedIn()) {

@@ -69,3 +69,20 @@ public class AttendanceConfig : IEntityTypeConfiguration<Attendance>
         b.HasIndex(x => new { x.ClassId, x.StudentId, x.Date }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }
+
+public class SentencePuzzleConfig : IEntityTypeConfiguration<SentencePuzzle>
+{
+    public void Configure(EntityTypeBuilder<SentencePuzzle> b)
+    {
+        b.ToTable("sentence_puzzles");
+        b.Property(x => x.Sentence).HasMaxLength(300).IsRequired();
+        b.Property(x => x.MeaningVi).HasMaxLength(300).IsRequired();
+
+        b.HasOne(x => x.Lesson)
+         .WithMany()
+         .HasForeignKey(x => x.LessonId)
+         .OnDelete(DeleteBehavior.Cascade);
+
+        b.HasIndex(x => new { x.LessonId, x.OrderNo });
+    }
+}

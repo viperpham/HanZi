@@ -8,7 +8,8 @@ interface Vocab { id: string; orderNo: number; hanzi: string; pinyin: string; ha
 interface Drill { id: string; orderNo: number; question: string; options: string[]; answerIndex: number; }
 interface Grammar { id: string; orderNo: number; title: string; formula?: string; explanation?: string; examples: any[]; mistakes: any[]; drills: Drill[]; }
 interface Dialogue { id: string; orderNo: number; speaker: string; zh: string; pinyin?: string; vi: string; audioUrl?: string; }
-interface LessonFull { id: string; titleVi: string; titleZh: string; description?: string; vocabularies: Vocab[]; grammarPoints: Grammar[]; dialogueLines: Dialogue[]; }
+interface Puzzle { id: string; orderNo: number; sentence: string; pinyin?: string; meaningVi: string; }
+interface LessonFull { id: string; titleVi: string; titleZh: string; description?: string; vocabularies: Vocab[]; grammarPoints: Grammar[]; dialogueLines: Dialogue[]; sentencePuzzles: Puzzle[]; }
 
 const PART_NAMES = ['Khởi động', 'Từ mới', 'Ôn tập từ mới', 'Ngữ pháp', 'Hội thoại'];
 
@@ -36,9 +37,19 @@ const PART_NAMES = ['Khởi động', 'Từ mới', 'Ôn tập từ mới', 'Ng�
 
         <!-- PHẦN 1: KHỞI ĐỘNG — thẻ lật -->
         @if (part === 0) {
-          <div class="alert alert-info py-2.5 text-sm">
-            <i class="fa-solid fa-clone shrink-0"></i>
-            <span>Thẻ lật hai mặt &mdash; chạm để lật, nghe phát âm &middot; Đã lật {{ flippedCount }}/{{ warmup.length }} thẻ</span>
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="alert alert-info py-2.5 text-sm grow">
+              <i class="fa-solid fa-clone shrink-0"></i>
+              <span>Thẻ lật hai mặt &mdash; chạm để lật, nghe phát âm &middot; Đã lật {{ flippedCount }}/{{ warmup.length }} thẻ</span>
+            </div>
+            <button (click)="flipAll()" class="btn btn-outline btn-sm gap-2">
+              <i class="fa-solid fa-clone"></i> Lật tất cả
+            </button>
+            <button (click)="slowMode = !slowMode" class="btn btn-outline btn-sm gap-2"
+              [class.btn-success]="slowMode" [class.text-white]="slowMode">
+              <i class="fa-solid" [class.fa-tortoise]="slowMode" [class.fa-gauge-high]="!slowMode"></i>
+              {{ slowMode ? 'Đọc chậm' : 'Đọc thường' }}
+            </button>
           </div>
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             @for (w of warmup; track w.id) {
@@ -73,6 +84,11 @@ const PART_NAMES = ['Khởi động', 'Từ mới', 'Ôn tập từ mới', 'Ng�
                 <i class="fa-solid fa-book text-error"></i> {{ l.vocabularies.length }} từ mới
               </span>
               <div class="flex gap-2">
+                <button (click)="slowMode = !slowMode" class="btn btn-outline btn-sm gap-2"
+                  [class.btn-success]="slowMode" [class.text-white]="slowMode">
+                  <i class="fa-solid" [class.fa-tortoise]="slowMode" [class.fa-gauge-high]="!slowMode"></i>
+                  {{ slowMode ? 'Đọc chậm' : 'Đọc thường' }}
+                </button>
                 <button (click)="playAll()" class="btn btn-error btn-sm text-white gap-2">
                   <i class="fa-solid fa-play"></i> Nghe cả bài
                 </button>
@@ -111,7 +127,7 @@ const PART_NAMES = ['Khởi động', 'Từ mới', 'Ôn tập từ mới', 'Ng�
           </div>
         }
 
-        <!-- PHẦN 3: ÔN TẬP — ghép từ -->
+        <!-- PHẦN 3: ÔN TẬP — ghép từ + sắp xếp câu -->
         @if (part === 2) {
           <div class="card bg-base-100 border border-base-200 shadow-sm">
             <div class="card-body p-6">
@@ -137,6 +153,74 @@ const PART_NAMES = ['Khởi động', 'Từ mới', 'Ôn tập từ mới', 'Ng�
               </div>
             </div>
           </div>
+
+          <!-- Trò 2 — Sắp xếp câu -->
+          @if (puzzles.length) {
+            <div class="card bg-base-100 border border-base-200 shadow-sm">
+              <div class="card-body p-6">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-shuffle text-error"></i> Trò 2 &mdash; Sắp xếp câu
+                  </h3>
+                  <span class="badge badge-warning badge-sm text-white ml-auto">Câu {{ pIdx + 1 }}/{{ puzzles.length }}</span>
+                </div>
+                @if (sbCurrent; as p) {
+                  <div class="mt-3 rounded-xl bg-base-200/60 p-4">
+                    <p class="text-xs text-base-content/50">Dịch câu sau sang tiếng Trung:</p>
+                    <p class="mt-1 font-bold text-base-content">{{ p.meaningVi }}</p>
+                  </div>
+
+                  <!-- Dòng trả lời -->
+                  <div class="mt-3 min-h-[56px] rounded-xl border-2 border-dashed p-3 flex flex-wrap items-center gap-2"
+                    [class]="sbFb === 'ok' ? 'border-success bg-success/5' : sbFb === 'no' ? 'border-error bg-error/5' : 'border-base-300'">
+                    @if (sbPicked.length) {
+                      @for (w of sbPicked; track $index) {
+                        <button (click)="unpickWord($index)" class="hanzi btn btn-sm bg-base-100 border border-base-200 font-bold"
+                          title="Bấm để bỏ từ này">{{ w }}</button>
+                      }
+                    } @else {
+                      <span class="text-sm text-base-content/40">Bấm các thẻ từ bên dưới để xếp câu…</span>
+                    }
+                  </div>
+
+                  <!-- Kho thẻ từ -->
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    @for (w of sbPool; track $index) {
+                      <button (click)="pickWord($index)" class="hanzi btn btn-outline btn-sm font-bold">{{ w }}</button>
+                    }
+                  </div>
+
+                  <div class="mt-4 flex flex-wrap gap-2">
+                    <button (click)="checkSb()" class="btn btn-success btn-sm text-white gap-1.5">
+                      <i class="fa-solid fa-check"></i> Kiểm tra
+                    </button>
+                    <button (click)="nextSb()" class="btn btn-outline btn-sm gap-1.5">
+                      <i class="fa-solid fa-forward"></i> Câu tiếp
+                    </button>
+                    <button (click)="speak(p.sentence)" class="btn btn-ghost btn-sm gap-1.5 text-error">
+                      <i class="fa-solid fa-volume-high"></i> Nghe đáp án
+                    </button>
+                    <button (click)="resetPuzzle()" class="btn btn-ghost btn-sm gap-1.5 text-base-content/50">
+                      <i class="fa-solid fa-rotate-left"></i> Chơi lại
+                    </button>
+                  </div>
+
+                  @if (sbFb === 'ok') {
+                    <div class="alert alert-success py-2.5 text-sm mt-3">
+                      <i class="fa-solid fa-circle-check"></i>
+                      <span>Chính xác! <span class="hanzi font-bold">{{ p.sentence }}</span>
+                        @if (p.pinyin) { — {{ p.pinyin }} }</span>
+                    </div>
+                  } @else if (sbFb === 'no') {
+                    <div class="alert alert-error py-2.5 text-sm mt-3">
+                      <i class="fa-solid fa-circle-exclamation"></i>
+                      <span>Chưa đúng — thử đổi lại trật tự từ nhé.</span>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
         }
 
         <!-- PHẦN 4: NGỮ PHÁP -->
@@ -205,6 +289,11 @@ const PART_NAMES = ['Khởi động', 'Từ mới', 'Ôn tập từ mới', 'Ng�
               <span class="flex items-center gap-2">
                 <i class="fa-solid fa-comments text-error"></i> Hội thoại phân vai A/B
               </span>
+              <button (click)="slowMode = !slowMode" class="btn btn-outline btn-sm gap-2"
+                [class.btn-success]="slowMode" [class.text-white]="slowMode">
+                <i class="fa-solid" [class.fa-tortoise]="slowMode" [class.fa-gauge-high]="!slowMode"></i>
+                {{ slowMode ? 'Đọc chậm' : 'Đọc thường' }}
+              </button>
               <button (click)="togglePinyin()" class="btn btn-outline btn-sm gap-2">
                 <i class="fa-solid" [class.fa-eye]="hidePinyin" [class.fa-eye-slash]="!hidePinyin"></i>
                 {{ hidePinyin ? 'Hiện phiên âm' : 'Ẩn phiên âm' }}
@@ -260,6 +349,14 @@ export class StudentLessonComponent implements OnInit {
   quiz: { hanzi: string; meaning: string; options: string[] }[] = [];
   lessonId = '';
 
+  puzzles: Puzzle[] = [];
+  pIdx = 0;
+  sbPicked: string[] = [];
+  sbPool: string[] = [];
+  sbFb: '' | 'ok' | 'no' = '';
+
+  get sbCurrent(): Puzzle | null { return this.puzzles[this.pIdx] ?? null; }
+
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
@@ -274,6 +371,7 @@ export class StudentLessonComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.slowMode = localStorage.getItem('hz_setting_slowtts') === '1';
     this.lessonId = this.route.snapshot.paramMap.get('id') ?? '';
     this.http.get<any>(`http://localhost:5000/api/lessons/${this.lessonId}`).subscribe({
       next: (res) => {
@@ -282,10 +380,13 @@ export class StudentLessonComponent implements OnInit {
         this.buildQuiz();
       }
     });
+    // Deep-link "học lại mục": /learn/:id?part=N — nhảy thẳng phần cần ôn
+    const qpPart = Number(this.route.snapshot.queryParamMap.get('part') ?? '0');
+    if (qpPart >= 1 && qpPart <= 5) this.part = qpPart - 1;
     this.http.get<any>('http://localhost:5000/api/progress/mine').subscribe({
       next: (res) => {
         const p = (res.data ?? []).find((x: any) => x.lessonId === this.lessonId);
-        if (p) this.part = Math.min(4, p.currentPart - 1);
+        if (p && qpPart < 1) this.part = Math.min(4, p.currentPart - 1);
       }
     });
   }
@@ -297,6 +398,48 @@ export class StudentLessonComponent implements OnInit {
       options: [v.meaningVi, ...vocab.filter((x) => x.id !== v.id).sort(() => Math.random() - 0.5).slice(0, 2).map((x) => x.meaningVi)]
         .sort(() => Math.random() - 0.5)
     }));
+    this.puzzles = this.lesson?.sentencePuzzles ?? [];
+    if (this.puzzles.length) this.resetPuzzle();
+  }
+
+  /** ----- Trò 2: sắp xếp câu ----- */
+  resetPuzzle() {
+    const p = this.sbCurrent;
+    if (!p) return;
+    this.sbPool = p.sentence.trim().split(/\s+/).sort(() => Math.random() - 0.5);
+    this.sbPicked = [];
+    this.sbFb = '';
+  }
+
+  pickWord(i: number) {
+    const w = this.sbPool[i];
+    if (w === undefined) return;
+    this.sbPool.splice(i, 1);
+    this.sbPicked.push(w);
+    this.sbFb = '';
+  }
+
+  unpickWord(i: number) {
+    const w = this.sbPicked[i];
+    if (w === undefined) return;
+    this.sbPicked.splice(i, 1);
+    this.sbPool.push(w);
+    this.sbFb = '';
+  }
+
+  checkSb() {
+    const p = this.sbCurrent;
+    if (!p) return;
+    const got = this.sbPicked.join('');
+    if (!got) { this.sbFb = 'no'; return; }
+    this.sbFb = got === p.sentence.replace(/\s+/g, '') ? 'ok' : 'no';
+    if (this.sbFb === 'ok') this.tts.speakUrl(undefined, p.sentence, this.slowMode);
+  }
+
+  nextSb() {
+    if (!this.puzzles.length) return;
+    this.pIdx = (this.pIdx + 1) % this.puzzles.length;
+    this.resetPuzzle();
   }
 
   speak(text: string, ev?: Event, audioUrl?: string) {
@@ -319,6 +462,13 @@ export class StudentLessonComponent implements OnInit {
   flip(id: string) {
     if (!this.flipped[id]) { this.flipped[id] = true; this.flippedCount++; }
     else this.flipped[id] = !this.flipped[id];
+  }
+
+  /** Lật/bỏ lật toàn bộ thẻ khởi động. */
+  flipAll() {
+    const anyDown = this.warmup.some(w => !this.flipped[w.id]);
+    for (const w of this.warmup) this.flipped[w.id] = anyDown;
+    this.flippedCount = anyDown ? this.warmup.length : 0;
   }
 
   toggleHideVi() { this.hideVi = !this.hideVi; }

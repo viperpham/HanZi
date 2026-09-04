@@ -78,4 +78,16 @@ public class ClassesController(IClassService service, ICurrentUser currentUser) 
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> AttendanceSummary(Guid id, CancellationToken ct)
         => (await service.GetAttendanceSummaryAsync(id, ct)).ToActionResult();
+
+    /// <summary>Grid tiến độ theo bài: từng học viên × từng bài học (0..5 phần).</summary>
+    [HttpGet("{id:guid}/lesson-progress")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> LessonProgress(Guid id, CancellationToken ct)
+        => (await service.LessonProgressAsync(id, ct)).ToActionResult();
+
+    /// <summary>Cập nhật cấu hình lớp.</summary>
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> Update(Guid id, ClassUpdateRequest req, CancellationToken ct)
+        => (await service.UpdateAsync(id, req, ct)).ToActionResult();
 }

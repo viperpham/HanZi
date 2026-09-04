@@ -77,11 +77,18 @@ public class DashboardService(AppDbContext db) : IDashboardService
 
         var last = progresses.OrderByDescending(p => p.UpdatedAt).FirstOrDefault();
 
+        // ghi chú chấm bài mới (3 ngày gần nhất) — cho alert "Giáo viên vừa gửi ghi chú"
+        var since = DateTime.UtcNow.AddDays(-3);
+        var recentNoteCount = await db.GradingNotes
+            .Where(n => !n.IsDeleted && n.SentAt >= since && n.Submission!.StudentId == studentId)
+            .CountAsync(ct);
+
         return Result<StudentHomeDto>.Ok(new StudentHomeDto(
             upcoming.Count,
             progresses.Count(p => p.CurrentPart >= 5),
             gradedScores.Count > 0 ? Math.Round(gradedScores.Average(), 1) : 0,
             StreakDays(progresses.Select(p => p.UpdatedAt)),
+            recentNoteCount,
             last is null ? null : new ContinueLearningDto(last.LessonId, last.Lesson.TitleZh, last.Lesson.TitleVi, last.CurrentPart),
             upcoming,
             classDtos));
@@ -89,10 +96,13 @@ public class DashboardService(AppDbContext db) : IDashboardService
 
     public async Task<Result<TeacherHomeDto>> TeacherHomeAsync(Guid teacherId, CancellationToken ct = default)
     {
-        var classIds = await db.Classes
+        var classes = await db.Classes
+            .Include(c => c.Enrollments)
+            .Include(c => c.Curriculum)
+            .ThenInclude(c => c.Lessons)
             .Where(c => c.TeacherId == teacherId)
-            .Select(c => c.Id)
             .ToListAsync(ct);
+        var classIds = classes.Select(c => c.Id).ToList();
 
         var pendings = await db.Submissions
             .Include(s => s.Assignment)
@@ -116,6 +126,118 @@ public class DashboardService(AppDbContext db) : IDashboardService
             .OrderBy(d => d.Date)
             .ToList();
 
+        // ---------- lịch dạy: lớp + bài đang học của từng lớp ----------
+        var lessonIdsAll = classes
+            .SelectMany(c => c.Curriculum.Lessons.Where(l => !l.IsDeleted).Select(l => l.Id))
+            .ToList();
+        var progresses = lessonIdsAll.Count > 0
+            ? await db.Progresses.Where(p => lessonIdsAll.Contains(p.LessonId)).ToListAsync(ct)
+            : [];
+
+        var todayClasses = new List<TeacherClassTodayDto>();
+        foreach (var c in classes)
+        {
+            var students = c.Enrollments
+                .Where(e => !e.IsDeleted && e.Status == EnrollmentStatus.Approved)
+                .Select(e => e.StudentId).ToList();
+            var lessons = c.Curriculum.Lessons
+                .Where(l => !l.IsDeleted).OrderBy(l => l.OrderNo).ToList();
+            if (lessons.Count == 0) continue;
+
+            var lessonIds = lessons.Select(l => l.Id).ToHashSet();
+            var classProgress = progresses
+                .Where(p => lessonIds.Contains(p.LessonId) && students.Contains(p.StudentId))
+                .ToList();
+
+            var avgProgress = students.Count > 0
+                ? (int)Math.Round(students.Average(sid =>
+                    lessons.Count * 5 > 0
+                        ? classProgress.Where(p => p.StudentId == sid).Sum(p => p.CurrentPart) * 100 / (lessons.Count * 5)
+                        : 0))
+                : 0;
+
+            // bài tiếp theo = bài đầu tiên mà trung bình lớp chưa học hết (CurrentPart < 5)
+            Lesson? next = null;
+            foreach (var l in lessons)
+            {
+                var rows = classProgress.Where(p => p.LessonId == l.Id).ToList();
+                var avgPart = students.Count > 0
+                    ? rows.Where(r => students.Contains(r.StudentId)).Average(r => (double)r.CurrentPart)
+                    : 0.0;
+                if (avgPart < 5) { next = l; break; }
+            }
+
+            todayClasses.Add(new TeacherClassTodayDto(
+                c.Id, c.Name, c.Code, c.Schedule, c.Room, students.Count, avgProgress,
+                next?.Id, next?.OrderNo, next?.TitleZh, next?.TitleVi));
+        }
+
+        // ---------- học viên cần chú ý: tiến độ < 60% ----------
+        var atRisk = new List<TeacherAtRiskDto>();
+        foreach (var c in classes)
+        {
+            var students = c.Enrollments
+                .Where(e => !e.IsDeleted && e.Status == EnrollmentStatus.Approved)
+                .Select(e => e.StudentId).ToList();
+            var lessons = c.Curriculum.Lessons
+                .Where(l => !l.IsDeleted).ToList();
+            if (lessons.Count == 0 || students.Count == 0) continue;
+
+            var lessonIds = lessons.Select(l => l.Id).ToHashSet();
+            var classProgress = progresses
+                .Where(p => lessonIds.Contains(p.LessonId) && students.Contains(p.StudentId))
+                .ToList();
+
+            foreach (var sid in students)
+            {
+                var pct = classProgress.Where(p => p.StudentId == sid).Sum(p => p.CurrentPart) * 100 / (lessons.Count * 5);
+                if (pct >= 60) continue;
+                atRisk.Add(new TeacherAtRiskDto(sid, "", c.Id, c.Name, pct, null));
+            }
+        }
+
+        // điểm trung bình cho các học viên cần chú ý
+        var riskIds = atRisk.Select(a => a.StudentId).Distinct().ToList();
+        var gradedByStudent = allSubs
+            .Where(s => s.FinalScore > 0 && riskIds.Contains(s.StudentId))
+            .GroupBy(s => s.StudentId)
+            .ToDictionary(g => g.Key, g => g.Average(s => s.FinalScore));
+        var riskNames = await db.Users
+            .Where(u => riskIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
+        atRisk = atRisk
+            .Select(a => a with
+            {
+                StudentName = riskNames.GetValueOrDefault(a.StudentId, "?"),
+                AvgScore = gradedByStudent.TryGetValue(a.StudentId, out var v) ? Math.Round(v, 1) : null
+            })
+            .OrderBy(a => a.ProgressPercent)
+            .Take(5)
+            .ToList();
+
+        // ---------- hoạt động gần đây của học viên trong các lớp ----------
+        var allStudentIds = classes
+            .SelectMany(c => c.Enrollments
+                .Where(e => !e.IsDeleted && e.Status == EnrollmentStatus.Approved)
+                .Select(e => e.StudentId))
+            .Distinct().ToList();
+        var activities = await db.ActivityLogs
+            .Where(a => a.ActorId != null && allStudentIds.Contains(a.ActorId.Value))
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(8)
+            .ToListAsync(ct);
+        var activityActors = activities.Where(a => a.ActorId is not null)
+            .Select(a => a.ActorId!.Value).Distinct().ToList();
+        var activityNames = activityActors.Count > 0
+            ? await db.Users.Where(u => activityActors.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName, ct)
+            : [];
+
+        var recentActivities = activities
+            .Select(a => new TeacherActivityDto(
+                a.Id, a.ActorId is null ? "?" : activityNames.GetValueOrDefault(a.ActorId.Value, "?"),
+                a.Action, a.CreatedAt))
+            .ToList();
+
         return Result<TeacherHomeDto>.Ok(new TeacherHomeDto(
             pendings.Count,
             classIds.Count,
@@ -123,7 +245,10 @@ public class DashboardService(AppDbContext db) : IDashboardService
             allSubs.Count > 0 ? Math.Round(onTime * 100m / allSubs.Count, 0) : 0,
             pendings.Take(5).Select(s => new TeacherPendingDto(
                 s.Id, s.AssignmentId, s.Assignment.Title, s.Student.FullName, s.SubmittedAt ?? DateTime.UtcNow)).ToList(),
-            last7));
+            last7,
+            todayClasses,
+            atRisk,
+            recentActivities));
     }
 
     public async Task<Result<AdminHomeDto>> AdminHomeAsync(CancellationToken ct = default)

@@ -21,9 +21,10 @@ interface AssignmentDetail { id: string; title: string; description?: string; du
           </div>
 
           @for (q of x.questions; track q.id; let i = $index) {
-            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm scroll-mt-24" [id]="'q-' + i">
               <div class="mb-2 flex items-center gap-2">
-                <span class="grid h-7 w-7 place-items-center rounded-lg bg-red-50 text-sm font-bold text-red-700">{{ i + 1 }}</span>
+                <span class="grid h-7 w-7 place-items-center rounded-lg text-sm font-bold"
+                  [class]="isAnswered(q) ? 'bg-success/15 text-success' : 'bg-red-50 text-red-700'">{{ i + 1 }}</span>
                 <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-500">{{ typeLabel(q.type) }}</span>
                 <span class="text-xs font-semibold text-slate-400">{{ q.points }} điểm</span>
               </div>
@@ -71,6 +72,26 @@ interface AssignmentDetail { id: string; title: string; description?: string; du
             @if (draftSavedAt) {
               <p class="text-xs text-success mt-1">Đã lưu {{ draftSavedAt | date:'HH:mm:ss' }}</p>
             }
+          </div>
+          <!-- Bảng câu hỏi — bấm nhảy tới câu, xanh = đã làm -->
+          <div class="card bg-base-100 border border-base-200 p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-base-content/50 mb-2">
+              <i class="fa-solid fa-table-list mr-1"></i>Bảng câu hỏi
+            </p>
+            <div class="flex flex-wrap gap-1.5">
+              @for (q of x.questions; track q.id; let i = $index) {
+                <button (click)="jumpTo(i)"
+                  class="h-8 w-8 rounded-lg text-xs font-bold border transition-colors"
+                  [class]="isAnswered(q)
+                    ? 'bg-success text-white border-success'
+                    : 'bg-base-100 text-base-content/50 border-base-200 hover:border-error/50'"
+                  [title]="typeLabel(q.type)">{{ i + 1 }}</button>
+              }
+            </div>
+            <div class="mt-2 flex items-center gap-3 text-[10px] text-base-content/40">
+              <span class="flex items-center gap-1"><span class="h-2 w-2 rounded bg-success inline-block"></span>Đã làm</span>
+              <span class="flex items-center gap-1"><span class="h-2 w-2 rounded bg-base-200 inline-block"></span>Chưa làm</span>
+            </div>
           </div>
           <button (click)="submit()" [disabled]="submitting"
             class="btn btn-error text-white w-full gap-2 disabled:opacity-50">
@@ -182,6 +203,16 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
   }
 
   answered() { return Object.values(this.answers).filter((v) => v && v.trim()).length; }
+
+  isAnswered(q: Question): boolean {
+    const v = this.answers[q.id];
+    return !!v && !!v.trim();
+  }
+
+  /** Nhảy tới câu hỏi tương ứng. */
+  jumpTo(i: number) {
+    document.getElementById('q-' + i)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
 
   submit() {
     if (!this.a) return;

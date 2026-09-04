@@ -38,4 +38,10 @@ public class LessonsController(ILessonService service) : ControllerBase
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> GenerateAudio(Guid id, CancellationToken ct)
         => (await service.GenerateAudioAsync(id, ct)).ToActionResult();
+
+    /// <summary>Đổi thứ tự bài học: -1 = đưa lên trên, 1 = đưa xuống dưới.</summary>
+    [HttpPost("{id:guid}/reorder")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> Reorder(Guid id, [FromBody] int direction, CancellationToken ct)
+        => (await service.ReorderAsync(id, direction, ct)).ToActionResult();
 }

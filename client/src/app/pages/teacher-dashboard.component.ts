@@ -8,9 +8,17 @@ Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
 
 interface Pending { submissionId: string; assignmentId: string; assignmentTitle: string; studentName: string; submittedAt: string; }
 interface Daily { date: string; count: number; }
+interface ClassToday {
+  classId: string; name: string; code: string; schedule?: string; room?: string;
+  studentCount: number; avgProgressPercent: number;
+  nextLessonId?: string; nextLessonOrderNo?: number; nextLessonZh?: string; nextLessonVi?: string;
+}
+interface AtRisk { studentId: string; studentName: string; classId: string; className: string; progressPercent: number; avgScore?: number; }
+interface RecentActivity { id: string; actorName: string; action: string; createdAt: string; }
 interface TeacherHome {
   pendingGrading: number; classesCount: number; curriculumsCount: number; onTimeRate: number;
   pendingList: Pending[]; last7Days: Daily[];
+  todayClasses: ClassToday[]; atRiskStudents: AtRisk[]; recentActivities: RecentActivity[];
 }
 
 @Component({
@@ -121,6 +129,119 @@ interface TeacherHome {
               @if (!data?.last7Days?.length) {
                 <div class="absolute inset-0 flex items-center justify-center">
                   <p class="text-sm text-base-content/40">Chưa có dữ liệu</p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Lịch dạy + bài đang học của từng lớp -->
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+          <div class="card-body p-5">
+            <h2 class="card-title text-base font-bold mb-3">
+              <i class="fa-solid fa-calendar-days text-base-content/50 mr-1"></i>
+              Lịch dạy &amp; bài đang học
+            </h2>
+            <div class="space-y-2">
+              @for (c of data?.todayClasses ?? []; track c.classId) {
+                <div class="p-3 rounded-xl border border-base-200 hover:border-error/30 transition-colors">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="badge badge-error badge-sm text-white font-semibold">{{ c.code }}</span>
+                    <span class="text-sm font-bold text-base-content">{{ c.name }}</span>
+                    <span class="ml-auto text-xs font-semibold"
+                      [class]="c.avgProgressPercent < 40 ? 'text-warning' : 'text-success'">
+                      Tiến độ {{ c.avgProgressPercent }}%
+                    </span>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-base-content/50">
+                    <span><i class="fa-regular fa-clock mr-1"></i>{{ c.schedule || 'Chưa xếp lịch' }}</span>
+                    <span><i class="fa-solid fa-location-dot mr-1"></i>{{ c.room || '—' }}</span>
+                    <span><i class="fa-solid fa-users mr-1"></i>{{ c.studentCount }} học viên</span>
+                  </div>
+                  @if (c.nextLessonId) {
+                    <div class="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-base-200/60">
+                      <span class="text-xs text-base-content/50">Bài đang học:</span>
+                      <span class="text-xs font-semibold text-base-content">
+                        Bài {{ c.nextLessonOrderNo }} · <span class="hanzi">{{ c.nextLessonZh }}</span> — {{ c.nextLessonVi }}
+                      </span>
+                      <a [routerLink]="['/learn', c.nextLessonId]" class="btn btn-ghost btn-xs gap-1 text-error ml-auto">
+                        <i class="fa-solid fa-chalkboard-user fa-xs"></i> Xem bài
+                      </a>
+                    </div>
+                  }
+                </div>
+              } @empty {
+                <div class="py-8 text-center">
+                  <i class="fa-solid fa-chalkboard text-3xl text-base-content/20"></i>
+                  <p class="text-sm text-base-content/40 mt-2">Chưa có lớp nào</p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Học viên cần chú ý -->
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+          <div class="card-body p-5">
+            <h2 class="card-title text-base font-bold mb-3">
+              <i class="fa-solid fa-user-clock text-base-content/50 mr-1"></i>
+              Học viên cần chú ý
+            </h2>
+            <div class="space-y-2">
+              @for (s of data?.atRiskStudents ?? []; track s.studentId + s.classId) {
+                <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-base-200 transition-colors">
+                  <div class="w-9 h-9 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-user text-sm text-warning"></i>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-base-content truncate">{{ s.studentName }}</p>
+                    <p class="text-xs text-base-content/40">{{ s.className }}</p>
+                  </div>
+                  <div class="w-24 shrink-0">
+                    <progress class="progress h-2"
+                      [class.progress-warning]="s.progressPercent < 30"
+                      [class.progress-success]="s.progressPercent >= 30"
+                      [value]="s.progressPercent" max="100"></progress>
+                    <p class="text-[10px] text-base-content/40 text-center mt-0.5">{{ s.progressPercent }}%</p>
+                  </div>
+                  <span class="text-xs font-bold text-base-content/60 shrink-0 w-9 text-right">
+                    {{ s.avgScore ?? '—' }}
+                  </span>
+                </div>
+              } @empty {
+                <div class="py-8 text-center">
+                  <i class="fa-solid fa-thumbs-up text-3xl text-success/60"></i>
+                  <p class="text-sm text-base-content/40 mt-2">Tất cả học viên đều có tiến độ tốt!</p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Hoạt động gần đây -->
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+          <div class="card-body p-5">
+            <h2 class="card-title text-base font-bold mb-3">
+              <i class="fa-solid fa-wave-square text-base-content/50 mr-1"></i>
+              Hoạt động gần đây
+            </h2>
+            <div class="space-y-2">
+              @for (a of data?.recentActivities ?? []; track a.id) {
+                <div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-base-200 transition-colors">
+                  <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-bolt text-xs text-info"></i>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm text-base-content">
+                      <span class="font-semibold">{{ a.actorName }}</span> — {{ a.action }}
+                    </p>
+                    <p class="text-xs text-base-content/40">{{ a.createdAt | date:'dd/MM HH:mm' }}</p>
+                  </div>
+                </div>
+              } @empty {
+                <div class="py-8 text-center">
+                  <i class="fa-solid fa-wind text-3xl text-base-content/20"></i>
+                  <p class="text-sm text-base-content/40 mt-2">Chưa có hoạt động nào</p>
                 </div>
               }
             </div>

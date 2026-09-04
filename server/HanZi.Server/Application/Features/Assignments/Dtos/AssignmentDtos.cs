@@ -8,23 +8,29 @@ public record AssignmentListDto(
 public record AssignmentDetailDto(
     Guid Id, string Title, string? Description, Guid ClassId, Guid LessonId,
     DateTime DueAt, DateTime? PublishAt, int DurationMin, int MaxAttempts, string LatePolicy,
-    bool ShowAnswer, bool Shuffle,
+    bool ShowAnswer, bool Shuffle, string? ExcludedStudentIds,
     IReadOnlyList<QuestionDto> Questions);
 
 public record QuestionDto(
     Guid Id, int OrderNo, string Type, string Prompt, decimal Points,
-    IReadOnlyList<string>? Options, string? Answer, string? SampleAnswer);
+    IReadOnlyList<string>? Options, string? Answer, string? SampleAnswer, string? KnowledgeTag);
 
 public record QuestionUpsertDto(
     string Type, string Prompt, decimal Points,
-    IReadOnlyList<string>? Options, string? Answer, string? SampleAnswer);
+    IReadOnlyList<string>? Options, string? Answer, string? SampleAnswer, string? KnowledgeTag = null);
 
 public record AssignmentCreateRequest(
     string Title, string? Description, Guid ClassId, Guid LessonId,
     DateTime DueAt, DateTime? PublishAt, int DurationMin, int MaxAttempts, string LatePolicy,
-    bool ShowAnswer, bool Shuffle, IReadOnlyList<QuestionUpsertDto> Questions);
+    bool ShowAnswer, bool Shuffle, string? ExcludedStudentIds, IReadOnlyList<QuestionUpsertDto> Questions);
 
 public record SubmissionListItemDto(
     Guid Id, Guid StudentId, string StudentName, string Status,
     DateTime? SubmittedAt, decimal AutoScore, decimal ManualScore, decimal FinalScore,
     bool NoteSent);
+
+public record WrongQuestionDto(int OrderNo, string Prompt, int WrongCount);
+
+public record AssignmentStatsDto(
+    int TotalStudents, int Submitted, int Late, int NotSubmitted, int PendingGrading,
+    IReadOnlyList<WrongQuestionDto> TopWrongQuestions);

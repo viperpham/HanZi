@@ -1,8 +1,10 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ToastService } from '../toast.service';
 import { ModalService } from '../modal.service';
+import { AuthService } from '../auth.service';
 
 interface UserRow {
   id: string; fullName: string; email: string; phone?: string; role: string; locked: boolean; lastLoginAt: string | null;
@@ -95,6 +97,10 @@ interface UserRow {
                         [class.hover:text-success]="u.locked" [class.hover:text-warning]="!u.locked">
                         <i class="fa-solid" [class.fa-lock-open]="u.locked" [class.fa-lock]="!u.locked"></i>
                       </button>
+                      <button (click)="loginAs(u)" title="Đăng nhập với vai trò này"
+                        class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-info">
+                        <i class="fa-solid fa-user-secret"></i>
+                      </button>
                       <button (click)="del(u)" title="Xoá tài khoản"
                         class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-error">
                         <i class="fa-solid fa-trash"></i>
@@ -121,6 +127,8 @@ export class UsersComponent implements OnInit {
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   private modal = inject(ModalService);
+  private auth = inject(AuthService);
+  private router = inject(Router);
 
   ngOnInit() { this.load(); }
 
@@ -132,6 +140,20 @@ export class UsersComponent implements OnInit {
   }
 
   roleLabel(r: string) { return r === 'Admin' ? 'Quản trị' : r === 'Teacher' ? 'Giáo viên' : 'Học viên'; }
+
+  /** Đăng nhập với vai trò này — Admin mở phiên với tư cách người dùng đích. */
+  async loginAs(u: UserRow) {
+    if (!(await this.modal.confirm(
+      `Đăng nhập với vai trò <b>${u.fullName}</b>?<br><span class="text-xs text-base-content/50">Bạn sẽ thấy ứng dụng như người này. Đăng xuất để quay lại tài khoản quản trị.</span>`,
+      'Đăng nhập'
+    ))) return;
+    const res = await this.http.post<any>(`http://localhost:5000/api/users/${u.id}/login-as`, {}).toPromise();
+    if (!res?.success) { this.toast.error(res?.error ?? 'Không thể mở phiên.'); return; }
+    this.auth.assume(res.data.accessToken, res.data.refreshToken, res.data.user);
+    const role = res.data.user.role;
+    this.toast.info(`Đang xem ứng dụng với vai trò ${u.fullName}.`);
+    this.router.navigateByUrl(role === 'Student' ? '/home' : '/dashboard');
+  }
 
   private downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;

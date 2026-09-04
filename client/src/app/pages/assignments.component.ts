@@ -6,8 +6,13 @@ import { RouterLink } from '@angular/router';
 import { ToastService } from '../toast.service';
 import { ModalService } from '../modal.service';
 
-interface ClassRow { id: string; name: string; }
+interface ClassRow { id: string; name: string; curriculumId?: string; }
 interface AssignmentRow { id: string; title: string; dueAt: string; questionCount: number; }
+interface SubStats {
+  totalStudents: number; submitted: number; late: number;
+  notSubmitted: number; pendingGrading: number;
+  topWrongQuestions: { orderNo: number; prompt: string; wrongCount: number }[];
+}
 
 @Component({
   selector: 'app-assignments',
@@ -168,7 +173,10 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
                   @if (d.dueAt) { · Hạn {{ d.dueAt | date:'dd/MM HH:mm' }} }
                 </p>
               </div>
-              <button (click)="detail = null" class="btn btn-ghost btn-sm ml-auto gap-2">
+              <button (click)="previewAsStudent()" class="btn btn-outline btn-xs gap-1.5 ml-auto">
+                <i class="fa-solid fa-user-graduate fa-xs"></i> Xem thử như học viên
+              </button>
+              <button (click)="detail = null" class="btn btn-ghost btn-sm gap-2">
                 <i class="fa-solid fa-xmark"></i> Đóng
               </button>
             </div>
@@ -222,10 +230,62 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
         <div class="card bg-base-100 border border-warning/40 shadow-md">
           <div class="card-body p-5 gap-3">
             <div class="flex flex-wrap items-center gap-3">
-              <h2 class="text-lg font-extrabold text-base-content">📥 Bài đã nộp: {{ sv.assignment.title }}</h2>
-              <span class="badge badge-ghost badge-sm">{{ sv.subs.length }} bài nộp</span>
-              <button (click)="subsView = null" class="btn btn-ghost btn-sm ml-auto">Đóng</button>
+              <i class="fa-solid fa-inbox text-warning"></i>
+              <h2 class="text-lg font-extrabold text-base-content">Bài đã nộp: {{ sv.assignment.title }}</h2>
+              <button (click)="remind(sv.assignment)"
+                class="btn btn-outline btn-xs gap-1.5 border-warning text-warning hover:bg-warning hover:text-white ml-auto">
+                <i class="fa-solid fa-bell"></i> Nhắc {{ sv.stats?.notSubmitted ?? 0 }} người chưa nộp
+              </button>
+              <button (click)="subsView = null" class="btn btn-ghost btn-sm">Đóng</button>
             </div>
+
+            <!-- Thống kê tổng hợp -->
+            @if (sv.stats; as st) {
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div class="rounded-xl border border-success/25 bg-success/5 px-3 py-2">
+                  <p class="text-xs font-semibold text-success/70">Đã nộp</p>
+                  <p class="text-xl font-extrabold text-success">{{ st.submitted }}<span class="text-xs text-base-content/30">/{{ st.totalStudents }}</span></p>
+                </div>
+                <div class="rounded-xl border border-warning/25 bg-warning/5 px-3 py-2">
+                  <p class="text-xs font-semibold text-warning/70">Nộp muộn</p>
+                  <p class="text-xl font-extrabold text-warning">{{ st.late }}</p>
+                </div>
+                <div class="rounded-xl border border-error/25 bg-error/5 px-3 py-2">
+                  <p class="text-xs font-semibold text-error/70">Chưa nộp</p>
+                  <p class="text-xl font-extrabold text-error">{{ st.notSubmitted }}</p>
+                </div>
+                <div class="rounded-xl border border-info/25 bg-info/5 px-3 py-2">
+                  <p class="text-xs font-semibold text-info/70">Chờ chấm</p>
+                  <p class="text-xl font-extrabold text-info">{{ st.pendingGrading }}</p>
+                </div>
+              </div>
+
+              @if (st.topWrongQuestions.length) {
+                <div class="alert bg-info/10 border-info/20 text-info text-sm py-2">
+                  <i class="fa-solid fa-chart-simple"></i>
+                  <span>
+                    <b>Câu sai nhiều nhất:</b>
+                    @for (w of st.topWrongQuestions; track w.orderNo; let last = $last) {
+                      Câu {{ w.orderNo }} — <span class="hanzi">{{ w.prompt }}</span>
+                      <b>({{ w.wrongCount }} em sai)</b>{{ last ? '.' : ' · ' }}
+                    }
+                    Nên nhắc lại ở buổi tới.
+                  </span>
+                </div>
+              }
+            }
+
+            <!-- Chip lọc -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              @for (f of subFilters; track f.key) {
+                <button class="btn btn-xs rounded-full gap-1 border"
+                  [class]="subFilter === f.key ? 'bg-error text-white border-error' : 'bg-base-100 border-base-200 text-base-content/60 hover:border-error/50'"
+                  (click)="subFilter = f.key">
+                  {{ f.label }} ({{ subFilterCount(sv, f.key) }})
+                </button>
+              }
+            </div>
+
             <div class="overflow-x-auto rounded-xl border border-base-200">
               <table class="table table-zebra w-full min-w-[600px]">
                 <thead>
@@ -234,14 +294,14 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
                   </tr>
                 </thead>
                 <tbody>
-                  @for (s of sv.subs; track s.id) {
+                  @for (s of subsFiltered(sv); track s.id) {
                     <tr>
                       <td class="font-semibold text-sm">{{ s.studentName }}</td>
                       <td class="text-sm text-base-content/60">{{ s.submittedAt | date:'dd/MM HH:mm' }}</td>
                       <td>
                         @if (s.status === 'Graded') { <span class="badge badge-success badge-sm text-white">Đã chấm</span> }
                         @else if (s.status === 'Submitted') { <span class="badge badge-warning badge-sm text-white">Chờ chấm</span> }
-                        @else { <span class="badge badge-ghost badge-sm">Nháp</span> }
+                        @else { <span class="badge badge-ghost badge-sm">Chưa nộp</span> }
                       </td>
                       <td class="font-bold text-info">{{ s.autoScore }}</td>
                       <td><span [class]="s.status === 'Graded' ? 'font-extrabold text-success' : 'font-extrabold text-base-content/20'">{{ s.finalScore }}</span></td>
@@ -249,7 +309,13 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
                         @if (s.noteSent) { <span class="badge badge-success badge-sm gap-1"><i class="fa-solid fa-check fa-xs"></i> Đã gửi</span> }
                         @else { <span class="text-base-content/30">—</span> }
                       </td>
-                      <td class="text-right">
+                      <td class="text-right whitespace-nowrap">
+                        @if (s.status === 'Doing') {
+                          <button (click)="remind(sv.assignment)"
+                            class="btn btn-ghost btn-xs gap-1 text-warning" title="Gửi nhắc nhở">
+                            <i class="fa-solid fa-bell fa-xs"></i> Nhắc
+                          </button>
+                        }
                         <a routerLink="/grading" [queryParams]="{ classId: classId, assignmentId: sv.assignment.id, submission: s.id }"
                           class="btn btn-error btn-xs text-white gap-1">
                           <i class="fa-solid fa-pen-nib"></i> Chấm
@@ -260,9 +326,47 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
                 </tbody>
               </table>
             </div>
-            @if (!sv.subs.length) {
-              <p class="py-8 text-center text-sm text-base-content/40">Chưa có ai nộp bài này.</p>
+            @if (!subsFiltered(sv).length) {
+              <p class="py-8 text-center text-sm text-base-content/40">
+                {{ subFilter === 'all' ? 'Chưa có ai nộp bài này.' : 'Không có học viên nào ở trạng thái này.' }}
+              </p>
             }
+          </div>
+        </div>
+      }
+
+      <!-- ===== XEM THỬ NHƯ HỌC VIÊN ===== -->
+      @if (previewOpen && detail; as d) {
+        <div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" (click)="previewOpen = false">
+          <div class="bg-base-100 rounded-2xl shadow-xl border border-base-200 w-full max-w-2xl max-h-[85vh] overflow-y-auto" (click)="$event.stopPropagation()">
+            <div class="p-4 border-b border-base-200 flex items-center gap-2 sticky top-0 bg-base-100">
+              <i class="fa-solid fa-user-graduate text-info"></i>
+              <h3 class="font-bold">Học viên sẽ thấy — {{ d.title }}</h3>
+              <span class="badge badge-ghost badge-sm">ẩn đáp án</span>
+              <button class="btn btn-ghost btn-xs btn-circle ml-auto" (click)="previewOpen = false">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div class="p-4 space-y-2.5">
+              @for (q of d.questions; track q.id; let i = $index) {
+                <div class="rounded-xl border border-base-200 p-4">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="grid h-6 w-6 place-items-center rounded-lg bg-error/10 text-xs font-bold text-error">{{ i + 1 }}</span>
+                    <span class="text-xs text-base-content/40">{{ q.points }} điểm</span>
+                  </div>
+                  <p class="hanzi text-sm font-semibold text-base-content">{{ q.prompt }}</p>
+                  @if (q.options?.length) {
+                    <div class="mt-2 flex flex-wrap gap-1.5">
+                      @for (opt of q.options; track $index) {
+                        <span class="hanzi rounded-lg px-2.5 py-1 text-xs border border-base-200 text-base-content/70">
+                          {{ ['A','B','C','D'][$index] }}. {{ opt }}
+                        </span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           </div>
         </div>
       }
@@ -332,6 +436,34 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
                   Đảo thứ tự câu
                 </label>
               </div>
+
+              <!-- Nhận bài từ (loại/khôi phục từng học viên) -->
+              <div class="sm:col-span-2 rounded-xl border border-base-200 p-3">
+                <div class="flex items-center gap-2 mb-2">
+                  <p class="text-xs font-bold text-base-content/50 flex items-center gap-1.5">
+                    <i class="fa-solid fa-users fa-xs"></i> Nhận bài từ
+                  </p>
+                  <span class="text-xs text-base-content/40">
+                    {{ editStudents.length - excludedIds().length }}/{{ editStudents.length }} học viên · bấm tên để loại/khôi phục
+                  </span>
+                </div>
+                @if (editStudents.length) {
+                  <div class="flex flex-wrap gap-1.5">
+                    @for (s of editStudents; track s.id) {
+                      <button type="button" (click)="toggleExclude(s.id)"
+                        class="btn btn-xs rounded-full gap-1 border"
+                        [class]="isExcluded(s.id)
+                          ? 'bg-base-200 border-base-200 text-base-content/30 line-through'
+                          : 'bg-success/10 border-success/30 text-success'">
+                        <i class="fa-solid" [class.fa-user-slash]="isExcluded(s.id)" [class.fa-user-check]="!isExcluded(s.id)"></i>
+                        {{ s.fullName }}
+                      </button>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-xs text-base-content/30">Đang tải danh sách lớp…</p>
+                }
+              </div>
             </div>
 
             <!-- Câu hỏi -->
@@ -376,6 +508,14 @@ interface AssignmentRow { id: string; title: string; dueAt: string; questionCoun
 
                   <input [(ngModel)]="q.prompt" placeholder="Nội dung câu hỏi…"
                     class="input input-sm w-full mb-3" />
+
+                  <label class="form-control mb-3">
+                    <span class="label-text text-xs font-semibold text-base-content/50 mb-1">
+                      Mảng kiến thức (dùng thống kê điểm theo mảng — VD: Từ vựng, Ngữ pháp Bài 1)
+                    </span>
+                    <input [(ngModel)]="q.knowledgeTag" placeholder="VD: Từ vựng"
+                      class="input input-xs w-full" />
+                  </label>
 
                   @if (q.type === 'MultipleChoice') {
                     <div class="space-y-2">
@@ -439,15 +579,63 @@ export class AssignmentsComponent implements OnInit {
   detail: any = null;
   editing: any = null;
   savingEdit = false;
-  subsView: { assignment: AssignmentRow; subs: any[] } | null = null;
+  subsView: { assignment: AssignmentRow; subs: any[]; stats?: SubStats | null } | null = null;
+  subFilter = 'all';
+  previewOpen = false;
+  editStudents: { id: string; fullName: string }[] = [];
+  subFilters = [
+    { key: 'all', label: 'Tất cả' },
+    { key: 'pend', label: 'Chờ chấm' },
+    { key: 'graded', label: 'Đã chấm' },
+    { key: 'none', label: 'Chưa nộp' }
+  ];
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   private modal = inject(ModalService);
+
+  /** Số học viên theo từng trạng thái cho chip lọc (kèm cả học viên chưa nộp). */
+  subFilterCount(sv: { subs: any[]; stats?: SubStats | null }, key: string): number {
+    if (key === 'all') return sv.stats?.totalStudents ?? sv.subs.length;
+    if (key === 'pend') return sv.stats?.pendingGrading ?? this.rawCount(sv.subs, 'Submitted');
+    if (key === 'graded') {
+      return sv.stats ? sv.stats.submitted - sv.stats.pendingGrading : this.rawCount(sv.subs, 'Graded');
+    }
+    return sv.stats?.notSubmitted ?? this.rawCount(sv.subs, 'Doing');
+  }
+
+  private rawCount(subs: any[], status: string) {
+    return subs.filter(s => s.status === status).length;
+  }
+
+  subsFiltered(sv: { subs: any[] }) {
+    if (this.subFilter === 'all') return sv.subs;
+    if (this.subFilter === 'pend') return sv.subs.filter(s => s.status === 'Submitted');
+    if (this.subFilter === 'graded') return sv.subs.filter(s => s.status === 'Graded');
+    return sv.subs.filter(s => s.status !== 'Graded' && s.status !== 'Submitted');
+  }
 
   async view(a: AssignmentRow) {
     const res = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}`).toPromise();
     if (res?.success) { this.detail = res.data; this.subsView = null; this.editing = null; }
     else this.toast.error(res?.error ?? 'Không tải được đề.');
+  }
+
+  /** Xem thử như học viên — ẩn đáp án đúng. */
+  previewAsStudent() { this.previewOpen = true; }
+
+  /** Danh sách id bị loại (từ chuỗi comma-separated của bài tập đang sửa). */
+  excludedIds(): string[] {
+    const raw = this.editing?.excludedStudentIds ?? '';
+    return String(raw).split(',').map(x => x.trim()).filter(Boolean);
+  }
+
+  isExcluded(id: string): boolean { return this.excludedIds().includes(id); }
+
+  toggleExclude(id: string) {
+    if (!this.editing) return;
+    const cur = this.excludedIds();
+    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    this.editing.excludedStudentIds = next.join(',');
   }
 
   isAns(q: any, i: number) { return q.answer === String(i); }
@@ -487,22 +675,29 @@ export class AssignmentsComponent implements OnInit {
       title: 'Nguồn câu hỏi', confirmText: 'Tiếp tục',
       fields: [{
         key: 'src', label: 'Chọn nguồn câu hỏi', type: 'select',
-        options: [['sample', '1 câu mẫu (sửa sau)'], ['bank', 'Lấy từ bài tập đã tạo']]
+        options: [['sample', '1 câu mẫu (sửa sau)'], ['bank', 'Lấy từ bài tập đã tạo'],
+                  ['auto', 'Sinh tự động từ từ vựng bài học']]
       }]
     });
     if (!src) return;
+    // Chọn bài học gắn với bài tập — dùng cho cả sinh tự động
+    const lessonId = await this.pickLessonFromClass();
+    if (lessonId === null) return;
     let questions: any[];
     if (src['src'] === 'bank') {
       const bankQs = await this.pickFromBank();
       if (!bankQs) return;
       questions = bankQs;
+    } else if (src['src'] === 'auto') {
+      const genQs = await this.generateFromVocab(lessonId);
+      if (!genQs) return;
+      questions = genQs;
     } else {
-      questions = [{ type: 'MultipleChoice', prompt: '你好 nghĩa là gì?', points: 2, options: ['xin chào', 'tạm biệt', 'cảm ơn'], answer: '0' }];
+      questions = [{ type: 'MultipleChoice', prompt: '你好 nghĩa là gì?', points: 2, options: ['xin chào', 'tạm biệt', 'cảm ơn'], answer: '0', knowledgeTag: 'Từ vựng' }];
     }
-    const firstLesson = await this.pickLessonId();
     this.http.post<any>('http://localhost:5000/api/assignments', {
       title: r['title'], description: r['description'], classId: this.classId,
-      lessonId: firstLesson, dueAt: due, publishAt: publish,
+      lessonId: lessonId, dueAt: due, publishAt: publish,
       durationMin: 15, maxAttempts: 2,
       latePolicy: 'Penalty', showAnswer: true, shuffle: false,
       questions
@@ -538,6 +733,39 @@ export class AssignmentsComponent implements OnInit {
     return qs;
   }
 
+  /** Sinh 5 câu trắc nghiệm từ từ vựng của bài học — mỗi từ 1 câu, 3 phương án. */
+  private async generateFromVocab(lessonId: string): Promise<any[] | null> {
+    const detail = await this.http.get<any>(`http://localhost:5000/api/lessons/${lessonId}`).toPromise();
+    const vocab = (detail?.data?.vocabularies ?? []).filter((v: any) => v.hanzi && v.meaningVi);
+    if (vocab.length < 3) { this.toast.error('Bài học cần ít nhất 3 từ vựng để sinh câu hỏi.'); return null; }
+
+    const chosen = [...vocab].sort(() => Math.random() - 0.5).slice(0, 5);
+    const questions = chosen.map((v: any) => {
+      const wrongs = vocab.filter((x: any) => x.id !== v.id).sort(() => Math.random() - 0.5).slice(0, 2);
+      const opts = [v.meaningVi, ...wrongs.map((w: any) => w.meaningVi)].sort(() => Math.random() - 0.5);
+      return {
+        type: 'MultipleChoice',
+        prompt: `${v.hanzi} (${v.pinyin}) có nghĩa là gì?`,
+        points: 1,
+        options: opts,
+        answer: String(opts.indexOf(v.meaningVi)),
+        knowledgeTag: 'Từ vựng'
+      };
+    });
+    this.toast.success(`Đã sinh ${questions.length} câu trắc nghiệm từ từ vựng.`);
+    return questions;
+  }
+
+  /** Nhắc các học viên chưa nộp bài — server gửi thông báo cho từng em. */
+  async remind(a: AssignmentRow) {
+    const res = await this.http.post<any>(`http://localhost:5000/api/assignments/${a.id}/remind`, {}).toPromise();
+    if (res?.success) {
+      this.toast.success(res.data > 0
+        ? `Đã gửi nhắc nhở tới ${res.data} học viên chưa nộp.`
+        : 'Mọi học viên đều đã nộp bài.');
+    } else this.toast.error(res?.error ?? 'Gửi nhắc nhở thất bại.');
+  }
+
   private downloadCsv(filename: string, header: string[], rows: (string | number)[][]) {
     const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
     const csv = '\uFEFF' + [header.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\r\n');
@@ -559,12 +787,22 @@ export class AssignmentsComponent implements OnInit {
     this.toast.success(`Đã xuất điểm cho ${subs.length} học viên.`);
   }
 
-  private async pickLessonId(): Promise<string> {
-    const curs = await this.http.get<any>('http://localhost:5000/api/curriculums').toPromise();
-    const first = curs?.data?.items?.[0];
-    if (!first) return '';
-    const lessons = await this.http.get<any>(`http://localhost:5000/api/lessons?curriculumId=${first.id}`).toPromise();
-    return lessons?.data?.[0]?.id ?? '';
+  /** Chọn bài học của giáo trình lớp — dùng khi giao bài (thay vì tự lấy bài đầu). */
+  private async pickLessonFromClass(): Promise<string | null> {
+    const cls = this.classes.find(c => c.id === this.classId);
+    if (!cls?.curriculumId) { this.toast.error('Lớp chưa gắn giáo trình.'); return null; }
+    const res = await this.http.get<any>(`http://localhost:5000/api/lessons?curriculumId=${cls.curriculumId}`).toPromise();
+    const lessons = res?.data ?? [];
+    if (!lessons.length) { this.toast.error('Giáo trình chưa có bài học nào.'); return null; }
+    const pick = await this.modal.form({
+      title: 'Gắn bài tập với bài học', confirmText: 'Chọn bài',
+      fields: [{
+        key: 'id', label: 'Bài học', type: 'select',
+        options: lessons.map((l: any) => [l.id, `Bài ${l.orderNo} — ${l.titleVi}`])
+      }]
+    });
+    if (!pick) return null;
+    return pick['id'];
   }
 
   private toLocalInput(iso: string): string {
@@ -580,8 +818,22 @@ export class AssignmentsComponent implements OnInit {
     this.detail = null;
     this.subsView = null;
     this.editing = JSON.parse(JSON.stringify(d));
+    this.editing.questions = (this.editing.questions ?? []).map((q: any) => ({ ...q, knowledgeTag: q.knowledgeTag ?? '' }));
+    this.editing.excludedStudentIds = this.editing.excludedStudentIds ?? '';
     this.editing.dueAt = this.toLocalInput(d.dueAt);
     this.editing.publishAt = this.toLocalInput(d.publishAt ?? '');
+    this.loadEditStudents(d.classId);
+  }
+
+  private editStudentsClassId = '';
+  private async loadEditStudents(classId: string) {
+    if (this.editStudentsClassId === classId && this.editStudents.length) return;
+    this.editStudentsClassId = classId;
+    this.editStudents = [];
+    const res = await this.http.get<any>(`http://localhost:5000/api/classes/${classId}`).toPromise();
+    this.editStudents = (res?.data?.students ?? [])
+      .filter((s: any) => s.status === 'Approved')
+      .map((s: any) => ({ id: s.id, fullName: s.fullName }));
   }
 
   cancelEdit() { this.editing = null; }
@@ -620,7 +872,8 @@ export class AssignmentsComponent implements OnInit {
       points: Number(q.points) || 1,
       options: q.type === 'MultipleChoice' ? (q.options ?? []).map((o: string) => o.trim()).filter(Boolean) : null,
       answer: q.answer ?? '',
-      sampleAnswer: q.sampleAnswer ?? ''
+      sampleAnswer: q.sampleAnswer ?? '',
+      knowledgeTag: (q.knowledgeTag ?? '').toString().trim() || null
     }));
     this.savingEdit = true;
     this.http.put<any>(`http://localhost:5000/api/assignments/${e.id}`, {
@@ -629,6 +882,7 @@ export class AssignmentsComponent implements OnInit {
       publishAt: e.publishAt ? new Date(e.publishAt).toISOString() : null,
       durationMin: Number(e.durationMin) || 15, maxAttempts: Number(e.maxAttempts) || 1,
       latePolicy: e.latePolicy, showAnswer: e.showAnswer, shuffle: e.shuffle,
+      excludedStudentIds: (e.excludedStudentIds ?? '') || null,
       questions
     }).subscribe({
       next: (res) => {
@@ -645,9 +899,11 @@ export class AssignmentsComponent implements OnInit {
 
   async viewSubs(a: AssignmentRow) {
     const res = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}/submissions`).toPromise();
+    const statsRes = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}/stats`).toPromise();
     this.detail = null;
     this.editing = null;
-    this.subsView = { assignment: a, subs: res?.data ?? [] };
+    this.subFilter = 'all';
+    this.subsView = { assignment: a, subs: res?.data ?? [], stats: statsRes?.success ? statsRes.data : null };
   }
 
   async del(a: AssignmentRow) {

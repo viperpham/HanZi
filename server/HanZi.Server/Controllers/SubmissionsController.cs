@@ -49,4 +49,9 @@ public class GradingController(IGradingService service) : ControllerBase
     [HttpPost("submissions/{id:guid}/grade")]
     public async Task<IActionResult> Grade(Guid id, GradeRequest req, CancellationToken ct)
         => (await service.GradeAsync(id, req, ct)).ToActionResult();
+
+    /// <summary>Gửi/cập nhật ghi chú riêng mà không đổi điểm — dùng khi áp dụng ghi chú hàng loạt.</summary>
+    [HttpPost("submissions/{id:guid}/note")]
+    public async Task<IActionResult> SendNote(Guid id, NoteRequest req, CancellationToken ct)
+        => (await service.SendNoteAsync(id, req, ct)).ToActionResult();
 }
