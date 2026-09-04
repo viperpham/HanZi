@@ -1,0 +1,26 @@
+name: Deploy HanZi LMS
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted   # runner cài trên PC Ubuntu/VPS
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build & restart stack
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker compose build
+          docker compose up -d
+          docker system prune -f
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -sf http://localhost:8080/ > /dev/null && echo "Client OK"
+          curl -sf -X POST http://localhost:8080/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@hanzi.vn","password":"123456"}' > /dev/null && echo "API OK"
