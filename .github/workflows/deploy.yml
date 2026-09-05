@@ -21,6 +21,6 @@ jobs:
         run: |
           sleep 10
           curl -sf http://localhost:8080/ > /dev/null && echo "Client OK"
-          curl -sf -X POST http://localhost:8080/api/auth/login \
-            -H "Content-Type: application/json" \
-            -d '{"email":"admin@hanzi.vn","password":"123456"}' > /dev/null && echo "API OK"
+          # 401 = API sống và auth middleware hoạt động (không phụ thuộc mật khẩu admin)
+          code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/notifications/mine)
+          [ "$code" = "401" ] && echo "API OK (auth sẵn sàng)" || { echo "API thất bại — HTTP $code"; exit 1; }

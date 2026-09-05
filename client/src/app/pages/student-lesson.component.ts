@@ -373,7 +373,7 @@ export class StudentLessonComponent implements OnInit {
   ngOnInit() {
     this.slowMode = localStorage.getItem('hz_setting_slowtts') === '1';
     this.lessonId = this.route.snapshot.paramMap.get('id') ?? '';
-    this.http.get<any>(`http://localhost:5000/api/lessons/${this.lessonId}`).subscribe({
+    this.http.get<any>(`/api/lessons/${this.lessonId}`).subscribe({
       next: (res) => {
         if (!res.success) return;
         this.lesson = res.data;
@@ -383,7 +383,7 @@ export class StudentLessonComponent implements OnInit {
     // Deep-link "học lại mục": /learn/:id?part=N — nhảy thẳng phần cần ôn
     const qpPart = Number(this.route.snapshot.queryParamMap.get('part') ?? '0');
     if (qpPart >= 1 && qpPart <= 5) this.part = qpPart - 1;
-    this.http.get<any>('http://localhost:5000/api/progress/mine').subscribe({
+    this.http.get<any>('/api/progress/mine').subscribe({
       next: (res) => {
         const p = (res.data ?? []).find((x: any) => x.lessonId === this.lessonId);
         if (p && qpPart < 1) this.part = Math.min(4, p.currentPart - 1);
@@ -497,7 +497,7 @@ export class StudentLessonComponent implements OnInit {
   go(i: number) {
     this.part = Math.max(0, Math.min(4, i));
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    this.http.post<any>('http://localhost:5000/api/progress/upsert', {
+    this.http.post<any>('/api/progress/upsert', {
       lessonId: this.lessonId, currentPart: this.part + 1, flippedCount: this.flippedCount
     }).subscribe();
   }

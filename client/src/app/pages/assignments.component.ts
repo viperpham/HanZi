@@ -643,7 +643,7 @@ export class AssignmentsComponent implements OnInit {
   }
 
   async view(a: AssignmentRow) {
-    const res = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}`).toPromise();
+    const res = await this.http.get<any>(`/api/assignments/${a.id}`).toPromise();
     if (res?.success) { this.detail = res.data; this.subsView = null; this.editing = null; }
     else this.toast.error(res?.error ?? 'Không tải được đề.');
   }
@@ -672,14 +672,14 @@ export class AssignmentsComponent implements OnInit {
   ngOnInit() { this.loadClasses(); }
 
   loadClasses() {
-    this.http.get<any>('http://localhost:5000/api/classes').subscribe({
+    this.http.get<any>('/api/classes').subscribe({
       next: (res) => { if (res.success) this.classes = res.data; }
     });
   }
 
   load() {
     if (!this.classId) return;
-    this.http.get<any>(`http://localhost:5000/api/assignments?classId=${this.classId}`).subscribe({
+    this.http.get<any>(`/api/assignments?classId=${this.classId}`).subscribe({
       next: (res) => { if (res.success) this.items = res.data; }
     });
   }
@@ -723,7 +723,7 @@ export class AssignmentsComponent implements OnInit {
     } else {
       questions = [{ type: 'MultipleChoice', prompt: '你好 nghĩa là gì?', points: 2, options: ['xin chào', 'tạm biệt', 'cảm ơn'], answer: '0', knowledgeTag: 'Từ vựng' }];
     }
-    this.http.post<any>('http://localhost:5000/api/assignments', {
+    this.http.post<any>('/api/assignments', {
       title: r['title'], description: r['description'], classId: this.classId,
       lessonId: lessonId, dueAt: due, publishAt: publish,
       durationMin: 15, maxAttempts: 2,
@@ -743,7 +743,7 @@ export class AssignmentsComponent implements OnInit {
   private async pickFromBank(): Promise<any[] | null> {
     const all: [string, string][] = [];
     for (const c of this.classes) {
-      const res = await this.http.get<any>(`http://localhost:5000/api/assignments?classId=${c.id}`).toPromise();
+      const res = await this.http.get<any>(`/api/assignments?classId=${c.id}`).toPromise();
       for (const a of res?.data ?? []) all.push([a.id, `${c.name} — ${a.title} (${a.questionCount} câu)`]);
     }
     if (!all.length) { this.toast.error('Chưa có bài tập nào để lấy câu hỏi.'); return null; }
@@ -752,7 +752,7 @@ export class AssignmentsComponent implements OnInit {
       fields: [{ key: 'id', label: 'Chọn bài tập nguồn', type: 'select', options: all }]
     });
     if (!pick) return null;
-    const detail = await this.http.get<any>(`http://localhost:5000/api/assignments/${pick['id']}`).toPromise();
+    const detail = await this.http.get<any>(`/api/assignments/${pick['id']}`).toPromise();
     const qs = (detail?.data?.questions ?? []).map((q: any) => ({
       type: q.type, prompt: q.prompt, points: q.points,
       options: q.options ?? [], answer: q.answer ?? '', sampleAnswer: q.sampleAnswer ?? ''
@@ -763,7 +763,7 @@ export class AssignmentsComponent implements OnInit {
 
   /** Sinh 5 câu trắc nghiệm từ từ vựng của bài học — mỗi từ 1 câu, 3 phương án. */
   private async generateFromVocab(lessonId: string): Promise<any[] | null> {
-    const detail = await this.http.get<any>(`http://localhost:5000/api/lessons/${lessonId}`).toPromise();
+    const detail = await this.http.get<any>(`/api/lessons/${lessonId}`).toPromise();
     const vocab = (detail?.data?.vocabularies ?? []).filter((v: any) => v.hanzi && v.meaningVi);
     if (vocab.length < 3) { this.toast.error('Bài học cần ít nhất 3 từ vựng để sinh câu hỏi.'); return null; }
 
@@ -786,7 +786,7 @@ export class AssignmentsComponent implements OnInit {
 
   /** Nhắc các học viên chưa nộp bài — server gửi thông báo cho từng em. */
   async remind(a: AssignmentRow) {
-    const res = await this.http.post<any>(`http://localhost:5000/api/assignments/${a.id}/remind`, {}).toPromise();
+    const res = await this.http.post<any>(`/api/assignments/${a.id}/remind`, {}).toPromise();
     if (res?.success) {
       this.toast.success(res.data > 0
         ? `Đã gửi nhắc nhở tới ${res.data} học viên chưa nộp.`
@@ -806,7 +806,7 @@ export class AssignmentsComponent implements OnInit {
   }
 
   async exportScores(a: AssignmentRow) {
-    const res = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}/submissions`).toPromise();
+    const res = await this.http.get<any>(`/api/assignments/${a.id}/submissions`).toPromise();
     const subs = res?.data ?? [];
     if (!subs.length) { this.toast.error('Chưa có bài nộp nào để xuất.'); return; }
     this.downloadCsv(`diem-${a.title}.csv`.replace(/[\\/:*?"<>|]/g, '_'),
@@ -819,7 +819,7 @@ export class AssignmentsComponent implements OnInit {
   private async pickLessonFromClass(): Promise<string | null> {
     const cls = this.classes.find(c => c.id === this.classId);
     if (!cls?.curriculumId) { this.toast.error('Lớp chưa gắn giáo trình.'); return null; }
-    const res = await this.http.get<any>(`http://localhost:5000/api/lessons?curriculumId=${cls.curriculumId}`).toPromise();
+    const res = await this.http.get<any>(`/api/lessons?curriculumId=${cls.curriculumId}`).toPromise();
     const lessons = res?.data ?? [];
     if (!lessons.length) { this.toast.error('Giáo trình chưa có bài học nào.'); return null; }
     const pick = await this.modal.form({
@@ -840,7 +840,7 @@ export class AssignmentsComponent implements OnInit {
   }
 
   async edit(a: AssignmentRow) {
-    const res = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}`).toPromise();
+    const res = await this.http.get<any>(`/api/assignments/${a.id}`).toPromise();
     const d = res?.data;
     if (!d) { this.toast.error('Không tải được bài tập.'); return; }
     this.detail = null;
@@ -858,7 +858,7 @@ export class AssignmentsComponent implements OnInit {
     if (this.editStudentsClassId === classId && this.editStudents.length) return;
     this.editStudentsClassId = classId;
     this.editStudents = [];
-    const res = await this.http.get<any>(`http://localhost:5000/api/classes/${classId}`).toPromise();
+    const res = await this.http.get<any>(`/api/classes/${classId}`).toPromise();
     this.editStudents = (res?.data?.students ?? [])
       .filter((s: any) => s.status === 'Approved')
       .map((s: any) => ({ id: s.id, fullName: s.fullName }));
@@ -904,7 +904,7 @@ export class AssignmentsComponent implements OnInit {
       knowledgeTag: (q.knowledgeTag ?? '').toString().trim() || null
     }));
     this.savingEdit = true;
-    this.http.put<any>(`http://localhost:5000/api/assignments/${e.id}`, {
+    this.http.put<any>(`/api/assignments/${e.id}`, {
       title: e.title, description: e.description, classId: e.classId, lessonId: e.lessonId,
       dueAt: e.dueAt ? new Date(e.dueAt).toISOString() : new Date(Date.now() + 3 * 86400000).toISOString(),
       publishAt: e.publishAt ? new Date(e.publishAt).toISOString() : null,
@@ -926,8 +926,8 @@ export class AssignmentsComponent implements OnInit {
   }
 
   async viewSubs(a: AssignmentRow) {
-    const res = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}/submissions`).toPromise();
-    const statsRes = await this.http.get<any>(`http://localhost:5000/api/assignments/${a.id}/stats`).toPromise();
+    const res = await this.http.get<any>(`/api/assignments/${a.id}/submissions`).toPromise();
+    const statsRes = await this.http.get<any>(`/api/assignments/${a.id}/stats`).toPromise();
     this.detail = null;
     this.editing = null;
     this.subFilter = 'all';
@@ -936,7 +936,7 @@ export class AssignmentsComponent implements OnInit {
 
   async del(a: AssignmentRow) {
     if (!(await this.modal.confirm(`Xoá bài tập <b>${a.title}</b>?`, 'Xoá', true))) return;
-    this.http.delete<any>(`http://localhost:5000/api/assignments/${a.id}`).subscribe({
+    this.http.delete<any>(`/api/assignments/${a.id}`).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã xoá.'); this.load(); } else this.toast.error(res.error!); }
     });
   }

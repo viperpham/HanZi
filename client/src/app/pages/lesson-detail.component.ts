@@ -307,7 +307,7 @@ export class LessonDetailComponent implements OnInit {
   }
 
   load() {
-    this.http.get<any>(`http://localhost:5000/api/lessons/${this.lessonId}`).subscribe({
+    this.http.get<any>(`/api/lessons/${this.lessonId}`).subscribe({
       next: (res) => { if (res.success) this.lesson = res.data; }
     });
   }
@@ -318,7 +318,7 @@ export class LessonDetailComponent implements OnInit {
 
   private saveChildren(payload: any, done: () => void) {
     const l = this.lesson!;
-    this.http.put<any>(`http://localhost:5000/api/lessons/${l.id}`, {
+    this.http.put<any>(`/api/lessons/${l.id}`, {
       curriculumId: l.curriculumId,
       orderNo: l.orderNo ?? 1, titleVi: l.titleVi, titleZh: l.titleZh, description: l.description,
       vocabularies: l.vocabularies.map((v, i) => ({ orderNo: i + 1, hanzi: v.hanzi, pinyin: v.pinyin, hanviet: (v as any).hanviet ?? null, partOfSpeech: (v as any).partOfSpeech ?? null, meaningVi: v.meaningVi, emoji: v.emoji, inWarmup: v.inWarmup })),
@@ -357,7 +357,7 @@ export class LessonDetailComponent implements OnInit {
 
   /** Đổi thứ tự bài học trong giáo trình — học viên nhìn thấy thứ tự này. */
   async reorder(l: LessonFull, dir: -1 | 1) {
-    const res = await this.http.post<any>(`http://localhost:5000/api/lessons/${l.id}/reorder`, dir).toPromise();
+    const res = await this.http.post<any>(`/api/lessons/${l.id}/reorder`, dir).toPromise();
     if (res?.success) { this.toast.success('Đã đổi thứ tự bài học.'); this.load(); }
     else this.toast.error(res?.error ?? 'Không đổi được thứ tự.');
   }

@@ -23,7 +23,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const http = inject(HttpClient);
   const router = inject(Router);
 
-  // Đưa URL tuyệt đối (http://localhost:5000/api/...) về tương đối (/api/...)
+  // Đưa URL tuyệt đối (/api/...) về tương đối (/api/...)
   // → dev đi qua proxy.conf.json, production đi qua nginx
   const url = req.url.replace(/^http:\/\/localhost:5000/, '');
   const isAuthCall = url.startsWith('/api/auth/login') || url.startsWith('/api/auth/refresh');

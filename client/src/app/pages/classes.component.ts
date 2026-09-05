@@ -483,7 +483,7 @@ export class ClassesComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:5000/api/classes').subscribe({
+    this.http.get<any>('/api/classes').subscribe({
       next: (res) => { if (res.success) this.items = res.data; },
       error: (e) => this.toast.error(e.error?.error ?? 'Không tải được')
     });
@@ -498,14 +498,14 @@ export class ClassesComponent implements OnInit {
 
   loadClassAssignments(c: ClassRow) {
     this.classAssignments = [];
-    this.http.get<any>(`http://localhost:5000/api/assignments?classId=${c.id}`).subscribe({
+    this.http.get<any>(`/api/assignments?classId=${c.id}`).subscribe({
       next: (res) => { if (res.success) this.classAssignments = res.data; }
     });
   }
 
   loadProgress(c: ClassRow) {
     this.progress = null;
-    this.http.get<any>(`http://localhost:5000/api/classes/${c.id}/lesson-progress`).subscribe({
+    this.http.get<any>(`/api/classes/${c.id}/lesson-progress`).subscribe({
       next: (res) => { if (res.success) this.progress = res.data; }
     });
   }
@@ -520,7 +520,7 @@ export class ClassesComponent implements OnInit {
   saveConfig(c: ClassRow) {
     if (!this.cfgName.trim()) { this.toast.error('Tên lớp không được để trống.'); return; }
     this.cfgSaving = true;
-    this.http.put<any>(`http://localhost:5000/api/classes/${c.id}`, {
+    this.http.put<any>(`/api/classes/${c.id}`, {
       name: this.cfgName, schedule: this.cfgSchedule, room: this.cfgRoom, status: this.cfgStatus
     }).subscribe({
       next: (res) => {
@@ -546,7 +546,7 @@ export class ClassesComponent implements OnInit {
     const q = this.searchQ.trim().toLowerCase();
     if (q.length < 2) { this.searchResults = []; return; }
     if (!this.allStudents.length) {
-      const res = await this.http.get<any>('http://localhost:5000/api/users?role=Student').toPromise();
+      const res = await this.http.get<any>('/api/users?role=Student').toPromise();
       this.allStudents = res?.data ?? [];
     }
     this.searchResults = this.allStudents
@@ -560,7 +560,7 @@ export class ClassesComponent implements OnInit {
   }
 
   addStudent(c: ClassRow, u: StudentRow) {
-    this.http.post<any>(`http://localhost:5000/api/classes/${c.id}/students`, [u.id]).subscribe({
+    this.http.post<any>(`/api/classes/${c.id}/students`, [u.id]).subscribe({
       next: (res) => {
         if (res.success) {
           this.toast.success(`Đã thêm ${u.fullName} vào lớp.`);
@@ -590,7 +590,7 @@ export class ClassesComponent implements OnInit {
   }
 
   async add() {
-    const curs = await this.http.get<any>('http://localhost:5000/api/curriculums').toPromise();
+    const curs = await this.http.get<any>('/api/curriculums').toPromise();
     const options: [string, string][] = (curs?.data?.items ?? []).map((c: any) => [c.id, `${c.coverEmoji} ${c.nameVi}`]);
     if (!options.length) { this.toast.error('Cần tạo giáo trình trước.'); return; }
     const r = await this.modal.form({
@@ -603,14 +603,14 @@ export class ClassesComponent implements OnInit {
       ]
     });
     if (!r) return;
-    this.http.post<any>('http://localhost:5000/api/classes', r).subscribe({
+    this.http.post<any>('/api/classes', r).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã tạo lớp. Dùng mã lớp để học viên tự tham gia!'); this.load(); } else this.toast.error(res.error!); },
       error: (e) => this.toast.error(e.error?.error ?? 'Thất bại')
     });
   }
 
   async enroll(c: ClassRow) {
-    const usersRes = await this.http.get<any>('http://localhost:5000/api/users?role=Student').toPromise();
+    const usersRes = await this.http.get<any>('/api/users?role=Student').toPromise();
     const all: StudentRow[] = usersRes?.data ?? [];
     if (!all.length) { this.toast.error('Chưa có học viên nào trong hệ thống. Hãy tạo ở trang Người dùng.'); return; }
     const r = await this.modal.form({
@@ -619,7 +619,7 @@ export class ClassesComponent implements OnInit {
       fields: [{ key: 'studentId', label: 'Chọn học viên (duyệt ngay)', type: 'select', options: all.map((s) => [s.id, `${s.fullName} (${s.email})`] as [string, string]) }]
     });
     if (!r) return;
-    this.http.post<any>(`http://localhost:5000/api/classes/${c.id}/students`, [r['studentId']]).subscribe({
+    this.http.post<any>(`/api/classes/${c.id}/students`, [r['studentId']]).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã thêm học viên.'); this.load(); if (this.selected?.id === c.id) this.loadStudents(c); } else this.toast.error(res.error!); },
       error: (e) => this.toast.error(e.error?.error ?? 'Thất bại')
     });
@@ -639,20 +639,20 @@ export class ClassesComponent implements OnInit {
   }
 
   async loadStudents(c: ClassRow) {
-    const detail = await this.http.get<any>(`http://localhost:5000/api/classes/${c.id}`).toPromise();
+    const detail = await this.http.get<any>(`/api/classes/${c.id}`).toPromise();
     this.students = detail?.data?.students ?? [];
   }
 
   loadAttendance(c: ClassRow) {
     this.attendance = [];
-    this.http.get<any>(`http://localhost:5000/api/classes/${c.id}/attendance?date=${this.attDate}`).subscribe({
+    this.http.get<any>(`/api/classes/${c.id}/attendance?date=${this.attDate}`).subscribe({
       next: (res) => { if (res.success) this.attendance = res.data; }
     });
   }
 
   loadSummary(c: ClassRow) {
     this.summary = [];
-    this.http.get<any>(`http://localhost:5000/api/classes/${c.id}/attendance/summary`).subscribe({
+    this.http.get<any>(`/api/classes/${c.id}/attendance/summary`).subscribe({
       next: (res) => { if (res.success) this.summary = res.data; }
     });
   }
@@ -665,7 +665,7 @@ export class ClassesComponent implements OnInit {
   saveAttendance(c: ClassRow) {
     const marks = this.attendance.filter((a) => a.status).map((a) => ({ studentId: a.studentId, status: a.status }));
     if (!marks.length) { this.toast.error('Chưa chọn trạng thái cho ai.'); return; }
-    this.http.post<any>(`http://localhost:5000/api/classes/${c.id}/attendance`, {
+    this.http.post<any>(`/api/classes/${c.id}/attendance`, {
       date: this.attDate, marks
     }).subscribe({
       next: (res) => { if (res.success) { this.toast.success(`Đã lưu điểm danh ${marks.length} học viên.`); this.loadSummary(c); } else this.toast.error(res.error!); },
@@ -674,21 +674,21 @@ export class ClassesComponent implements OnInit {
   }
 
   approve(c: ClassRow, s: StudentRow, ok: boolean) {
-    this.http.post<any>(`http://localhost:5000/api/classes/${c.id}/students/${s.id}/approve`, ok).subscribe({
+    this.http.post<any>(`/api/classes/${c.id}/students/${s.id}/approve`, ok).subscribe({
       next: (res) => { if (res.success) { this.toast.success(ok ? `Đã duyệt ${s.fullName}.` : 'Đã từ chối.'); this.load(); this.loadStudents(c); } else this.toast.error(res.error!); }
     });
   }
 
   async removeStudent(c: ClassRow, s: StudentRow) {
     if (!(await this.modal.confirm(`Xoá <b>${s.fullName}</b> khỏi lớp ${c.name}?`, 'Xoá', true))) return;
-    this.http.delete<any>(`http://localhost:5000/api/classes/${c.id}/students/${s.id}`).subscribe({
+    this.http.delete<any>(`/api/classes/${c.id}/students/${s.id}`).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã xoá khỏi lớp.'); this.load(); this.loadStudents(c); } else this.toast.error(res.error!); }
     });
   }
 
   async del(c: ClassRow) {
     if (!(await this.modal.confirm(`Xoá lớp <b>${c.name}</b>?`, 'Xoá', true))) return;
-    this.http.delete<any>(`http://localhost:5000/api/classes/${c.id}`).subscribe({
+    this.http.delete<any>(`/api/classes/${c.id}`).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã xoá lớp.'); this.selected = null; this.load(); } else this.toast.error(res.error!); },
       error: (e) => this.toast.error(e.error?.error ?? 'Xoá thất bại')
     });

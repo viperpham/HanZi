@@ -138,7 +138,7 @@ export class CurriculumsComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:5000/api/curriculums').subscribe({
+    this.http.get<any>('/api/curriculums').subscribe({
       next: (res) => { if (res.success) this.items = res.data.items; },
       error: (e) => this.toast.error(e.error?.error ?? 'Không tải được')
     });
@@ -161,7 +161,7 @@ export class CurriculumsComponent implements OnInit {
       ]
     });
     if (!r) return;
-    this.http.post<any>('http://localhost:5000/api/curriculums', this.toBody(r)).subscribe({
+    this.http.post<any>('/api/curriculums', this.toBody(r)).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã tạo giáo trình.'); this.load(); } else this.toast.error(res.error!); },
       error: (e) => this.toast.error(e.error?.error ?? 'Thất bại')
     });
@@ -179,7 +179,7 @@ export class CurriculumsComponent implements OnInit {
   }
 
   private async loadTeachers(): Promise<[string, string][]> {
-    const res = await this.http.get<any>('http://localhost:5000/api/users?role=Teacher').toPromise();
+    const res = await this.http.get<any>('/api/users?role=Teacher').toPromise();
     const list: [string, string][] = (res?.data ?? []).map((t: any) => [t.id, t.fullName] as [string, string]);
     return [['', '— chưa gán —'], ...list];
   }
@@ -202,7 +202,7 @@ export class CurriculumsComponent implements OnInit {
       ]
     });
     if (!r) return;
-    this.http.put<any>(`http://localhost:5000/api/curriculums/${c.id}`, this.toBody(r)).subscribe({
+    this.http.put<any>(`/api/curriculums/${c.id}`, this.toBody(r)).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã cập nhật.'); this.load(); } else this.toast.error(res.error!); },
       error: (e) => this.toast.error(e.error?.error ?? 'Thất bại')
     });
@@ -210,13 +210,13 @@ export class CurriculumsComponent implements OnInit {
 
   /** Lấy teacherId hiện tại từ detail (list DTO không trả TeacherId). */
   private async currentTeacherId(id: string): Promise<string> {
-    const res = await this.http.get<any>(`http://localhost:5000/api/curriculums/${id}`).toPromise();
+    const res = await this.http.get<any>(`/api/curriculums/${id}`).toPromise();
     return res?.data?.teacherId ?? '';
   }
 
   async del(c: Curriculum) {
     if (!(await this.modal.confirm(`Xoá giáo trình <b>${c.nameVi}</b>? Dữ liệu còn trong DB, khôi phục được.`, 'Xoá', true))) return;
-    this.http.delete<any>(`http://localhost:5000/api/curriculums/${c.id}`).subscribe({
+    this.http.delete<any>(`/api/curriculums/${c.id}`).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã xoá.'); this.load(); } else this.toast.error(res.error!); }
     });
   }

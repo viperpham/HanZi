@@ -633,7 +633,7 @@ export class GradingComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.http.get<any>('http://localhost:5000/api/classes').subscribe({
+    this.http.get<any>('/api/classes').subscribe({
       next: (res) => {
         if (!res.success) return;
         this.classes = res.data;
@@ -642,14 +642,14 @@ export class GradingComponent implements OnInit {
         const cid = qp.get('classId');
         if (!cid || !this.classes.some((c) => c.id === cid)) return;
         this.classId = cid;
-        this.http.get<any>(`http://localhost:5000/api/assignments?classId=${cid}`).subscribe({
+        this.http.get<any>(`/api/assignments?classId=${cid}`).subscribe({
           next: (r2) => {
             if (!r2.success) return;
             this.assignments = r2.data;
             const aid = qp.get('assignmentId');
             if (!aid || !this.assignments.some((a) => a.id === aid)) return;
             this.assignmentId = aid;
-            this.http.get<any>(`http://localhost:5000/api/assignments/${aid}/submissions`).subscribe({
+            this.http.get<any>(`/api/assignments/${aid}/submissions`).subscribe({
               next: (r3) => {
                 if (!r3.success) return;
                 this.subs = r3.data;
@@ -666,14 +666,14 @@ export class GradingComponent implements OnInit {
   loadAssignments() {
     this.assignmentId = '';
     this.subs = [];
-    this.http.get<any>(`http://localhost:5000/api/assignments?classId=${this.classId}`).subscribe({
+    this.http.get<any>(`/api/assignments?classId=${this.classId}`).subscribe({
       next: (res) => { if (res.success) this.assignments = res.data; }
     });
   }
 
   loadSubs() {
     if (!this.assignmentId) return;
-    this.http.get<any>(`http://localhost:5000/api/assignments/${this.assignmentId}/submissions`).subscribe({
+    this.http.get<any>(`/api/assignments/${this.assignmentId}/submissions`).subscribe({
       next: (res) => { if (res.success) this.subs = res.data; }
     });
   }
@@ -685,7 +685,7 @@ export class GradingComponent implements OnInit {
 
   async open(s: SubRow) {
     if (s.status === 'Doing') { this.toast.error('Học viên chưa nộp bài.'); return; }
-    const res = await this.http.get<any>(`http://localhost:5000/api/grading/submissions/${s.id}`).toPromise();
+    const res = await this.http.get<any>(`/api/grading/submissions/${s.id}`).toPromise();
     if (!res?.success) { this.toast.error(res?.error ?? 'Không tải được bài làm.'); return; }
     const d: SubDetail = res.data;
     this.scores = {};
@@ -780,7 +780,7 @@ export class GradingComponent implements OnInit {
         return;
       }
       const s = picked[done++];
-      this.http.post<any>(`http://localhost:5000/api/grading/submissions/${s.id}/note`, payload)
+      this.http.post<any>(`/api/grading/submissions/${s.id}/note`, payload)
         .subscribe({ next: () => next(), error: () => next() });
     };
     next();
@@ -789,7 +789,7 @@ export class GradingComponent implements OnInit {
   submitGrade() {
     if (!this.detail) return;
     this.saving = true;
-    this.http.post<any>(`http://localhost:5000/api/grading/submissions/${this.detail.id}/grade`, {
+    this.http.post<any>(`/api/grading/submissions/${this.detail.id}/grade`, {
       manualScore: Number(this.manualScore) || 0,
       answers: this.detail.answers.map((a) => ({
         questionId: a.questionId,

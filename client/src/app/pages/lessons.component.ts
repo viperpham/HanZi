@@ -81,7 +81,7 @@ export class LessonsComponent implements OnInit {
   }
 
   load() {
-    this.http.get<any>(`http://localhost:5000/api/lessons?curriculumId=${this.curriculumId}`).subscribe({
+    this.http.get<any>(`/api/lessons?curriculumId=${this.curriculumId}`).subscribe({
       next: (res) => { if (res.success) this.items = res.data; }
     });
   }
@@ -97,7 +97,7 @@ export class LessonsComponent implements OnInit {
       ]
     });
     if (!r) return;
-    this.http.post<any>('http://localhost:5000/api/lessons', {
+    this.http.post<any>('/api/lessons', {
       curriculumId: this.curriculumId, orderNo: Number(r['orderNo']) || 1,
       titleVi: r['titleVi'], titleZh: r['titleZh'] || r['titleVi'], description: r['description']
     }).subscribe({
@@ -108,7 +108,7 @@ export class LessonsComponent implements OnInit {
 
   async del(l: LessonBrief) {
     if (!(await this.modal.confirm(`Xoá bài <b>${l.titleVi}</b>?`, 'Xoá', true))) return;
-    this.http.delete<any>(`http://localhost:5000/api/lessons/${l.id}`).subscribe({
+    this.http.delete<any>(`/api/lessons/${l.id}`).subscribe({
       next: (res) => { if (res.success) { this.toast.success('Đã xoá.'); this.load(); } else this.toast.error(res.error!); }
     });
   }

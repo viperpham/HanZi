@@ -125,7 +125,7 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.assignmentId = this.route.snapshot.paramMap.get('id') ?? '';
-    this.http.get<any>(`http://localhost:5000/api/assignments/${this.assignmentId}`).subscribe({
+    this.http.get<any>(`/api/assignments/${this.assignmentId}`).subscribe({
       next: (res) => {
         if (!res.success) return;
         this.a = res.data;
@@ -164,7 +164,7 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
   }
 
   private restoreDraft() {
-    this.http.get<any>('http://localhost:5000/api/submissions/mine').subscribe({
+    this.http.get<any>('/api/submissions/mine').subscribe({
       next: (res) => {
         if (!res.success) return;
         const draft = (res.data ?? []).find((s: any) => s.assignmentId === this.assignmentId && s.status === 'Doing');
@@ -182,7 +182,7 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
 
   private saveDraft() {
     if (!this.a || this.submitting || this.answered() === 0) return;
-    this.http.post<any>(`http://localhost:5000/api/submissions/assignments/${this.assignmentId}/draft`, {
+    this.http.post<any>(`/api/submissions/assignments/${this.assignmentId}/draft`, {
       answers: this.a.questions.map((q) => ({ questionId: q.id, answerText: this.answers[q.id] ?? null }))
     }).subscribe({
       next: (res) => { if (res.success) this.draftSavedAt = new Date(); }
@@ -219,7 +219,7 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
     const missing = this.a.questions.length - this.answered();
     if (missing > 0 && !confirm(`Bạn còn ${missing} câu chưa làm. Nộp bài luôn?`)) return;
     this.submitting = true;
-    this.http.post<any>(`http://localhost:5000/api/submissions/assignments/${this.assignmentId}/submit`, {
+    this.http.post<any>(`/api/submissions/assignments/${this.assignmentId}/submit`, {
       answers: this.a.questions.map((q) => ({ questionId: q.id, answerText: this.answers[q.id] ?? null }))
     }).subscribe({
       next: (res) => {

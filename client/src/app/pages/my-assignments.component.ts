@@ -143,17 +143,17 @@ export class MyAssignmentsComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:5000/api/classes').subscribe({
+    this.http.get<any>('/api/classes').subscribe({
       next: async (cls) => {
         if (!cls.success) return;
         const classes: ClassRow[] = cls.data;
         const all: AssignmentRow[] = [];
         const mine = await new Promise<any>((resolve) =>
-          this.http.get<any>('http://localhost:5000/api/submissions/mine').subscribe(resolve));
+          this.http.get<any>('/api/submissions/mine').subscribe(resolve));
 
         for (const c of classes) {
           const res = await new Promise<any>((resolve) =>
-            this.http.get<any>(`http://localhost:5000/api/assignments?classId=${c.id}`).subscribe(resolve));
+            this.http.get<any>(`/api/assignments?classId=${c.id}`).subscribe(resolve));
           for (const a of res?.data ?? []) {
             const sub = (mine?.data ?? []).find((s: any) => s.assignmentId === a.id);
             all.push({ ...a, className: c.name, status: sub?.status ?? 'Doing', finalScore: sub?.finalScore ?? 0, id: a.id });

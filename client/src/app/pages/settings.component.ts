@@ -87,7 +87,7 @@ export class SettingsComponent {
 
   systemRows = [
     { label: 'Ứng dụng', value: 'HanZi LMS — Web' },
-    { label: 'Máy chủ API', value: (typeof location !== 'undefined' ? location.origin : '') || 'http://localhost:5000' },
+    { label: 'Máy chủ API', value: typeof location !== 'undefined' ? location.origin : '' },
     { label: 'Nguồn từ điển', value: 'pinyin-pro · TTS hệ thống' },
     { label: 'Giao diện', value: 'DaisyUI · Font Awesome 6' },
   ];

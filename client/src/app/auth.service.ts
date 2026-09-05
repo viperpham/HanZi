@@ -6,7 +6,7 @@ export interface UserInfo { id: string; fullName: string; email: string; role: s
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private base = 'http://localhost:5000/api/auth';
+  private base = '/api/auth';
   user = signal<UserInfo | null>(this.loadUser());
 
   constructor(private http: HttpClient) {}

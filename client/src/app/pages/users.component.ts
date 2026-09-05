@@ -133,7 +133,7 @@ export class UsersComponent implements OnInit {
   ngOnInit() { this.load(); }
 
   load() {
-    this.http.get<any>('http://localhost:5000/api/users').subscribe({
+    this.http.get<any>('/api/users').subscribe({
       next: (res) => { if (res.success) this.users = res.data; },
       error: (e) => this.toast.error(e.error?.error ?? 'Không tải được danh sách')
     });
@@ -147,7 +147,7 @@ export class UsersComponent implements OnInit {
       `Đăng nhập với vai trò <b>${u.fullName}</b>?<br><span class="text-xs text-base-content/50">Bạn sẽ thấy ứng dụng như người này. Đăng xuất để quay lại tài khoản quản trị.</span>`,
       'Đăng nhập'
     ))) return;
-    const res = await this.http.post<any>(`http://localhost:5000/api/users/${u.id}/login-as`, {}).toPromise();
+    const res = await this.http.post<any>(`/api/users/${u.id}/login-as`, {}).toPromise();
     if (!res?.success) { this.toast.error(res?.error ?? 'Không thể mở phiên.'); return; }
     this.auth.assume(res.data.accessToken, res.data.refreshToken, res.data.user);
     const role = res.data.user.role;
@@ -187,7 +187,7 @@ export class UsersComponent implements OnInit {
     let ok = 0, fail = 0;
     for (const [fullName, email, role, password] of rows) {
       const res = await new Promise<any>((resolve) =>
-        this.http.post<any>('http://localhost:5000/api/users', { fullName, email, role, password: password || '123456' }).subscribe(resolve));
+        this.http.post<any>('/api/users', { fullName, email, role, password: password || '123456' }).subscribe(resolve));
       if (res.success) ok++; else { fail++; this.toast.error(`${email}: ${res.error}`); }
     }
     this.toast.success(`Nhập xong: ${ok} thành công, ${fail} lỗi.`);
@@ -206,7 +206,7 @@ export class UsersComponent implements OnInit {
       ]
     });
     if (!r) return;
-    this.http.post<any>('http://localhost:5000/api/users', r).subscribe({
+    this.http.post<any>('/api/users', r).subscribe({
       next: (res) => {
         if (res.success) { this.toast.success(`Đã tạo tài khoản ${r['email']}.`); this.load(); }
         else this.toast.error(res.error!);
@@ -231,7 +231,7 @@ export class UsersComponent implements OnInit {
     if (!r) return;
     const body: any = { fullName: r['fullName'], email: r['email'], phone: r['phone'] || null, role: r['role'] };
     if (r['newPassword']) body.newPassword = r['newPassword'];
-    this.http.put<any>(`http://localhost:5000/api/users/${u.id}`, body).subscribe({
+    this.http.put<any>(`/api/users/${u.id}`, body).subscribe({
       next: (res) => {
         if (res.success) { this.toast.success('Đã cập nhật.'); this.load(); }
         else this.toast.error(res.error!);
@@ -245,7 +245,7 @@ export class UsersComponent implements OnInit {
       ? `Mở khoá tài khoản của <b>${u.fullName}</b>?`
       : `Khoá tài khoản của <b>${u.fullName}</b>? Họ sẽ không đăng nhập được.`;
     if (!(await this.modal.confirm(msg, u.locked ? 'Mở khoá' : 'Khoá', !u.locked))) return;
-    this.http.put<any>(`http://localhost:5000/api/users/${u.id}`, { locked: !u.locked }).subscribe({
+    this.http.put<any>(`/api/users/${u.id}`, { locked: !u.locked }).subscribe({
       next: (res) => {
         if (res.success) { this.toast.success(u.locked ? 'Đã mở khoá.' : 'Đã khoá tài khoản.'); this.load(); }
         else this.toast.error(res.error!);
@@ -256,7 +256,7 @@ export class UsersComponent implements OnInit {
 
   async resetPw(u: UserRow) {
     if (!(await this.modal.confirm(`Đặt lại mật khẩu của <b>${u.fullName}</b> thành <code>123456</code>?`, 'Đặt lại'))) return;
-    this.http.put<any>(`http://localhost:5000/api/users/${u.id}`, { newPassword: '123456' }).subscribe({
+    this.http.put<any>(`/api/users/${u.id}`, { newPassword: '123456' }).subscribe({
       next: (res) => {
         if (res.success) this.toast.success(`Đã đặt lại mật khẩu của ${u.fullName}.`);
         else this.toast.error(res.error!);
@@ -267,7 +267,7 @@ export class UsersComponent implements OnInit {
 
   async del(u: UserRow) {
     if (!(await this.modal.confirm(`Xoá tài khoản <b>${u.fullName}</b> (${u.email})?\n<span class="text-xs text-base-content/40">Dữ liệu liên quan sẽ được ẩn đi — có thể khôi phục từ database.</span>`, 'Xoá', true))) return;
-    this.http.delete<any>(`http://localhost:5000/api/users/${u.id}`).subscribe({
+    this.http.delete<any>(`/api/users/${u.id}`).subscribe({
       next: (res) => {
         if (res.success) { this.toast.success(`Đã xoá ${u.fullName}.`); this.load(); }
         else this.toast.error(res.error!);

@@ -541,7 +541,7 @@ export class MyResultsComponent implements OnInit {
   }
 
   load() {
-    this.http.get<any>('http://localhost:5000/api/submissions/mine').subscribe({
+    this.http.get<any>('/api/submissions/mine').subscribe({
       next: (res) => {
         if (res.success) {
           this.subs = res.data;
@@ -561,7 +561,7 @@ export class MyResultsComponent implements OnInit {
   reply(s: SubDetail) {
     const text = this.replies[s.id]?.trim();
     if (!text) return;
-    this.http.post<any>(`http://localhost:5000/api/submissions/${s.id}/reply`, JSON.stringify(text), {
+    this.http.post<any>(`/api/submissions/${s.id}/reply`, JSON.stringify(text), {
       headers: { 'Content-Type': 'application/json' }
     }).subscribe({
       next: (res) => {
