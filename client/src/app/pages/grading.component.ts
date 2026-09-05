@@ -475,50 +475,58 @@ const TEMPLATES = [
         <div class="card bg-gradient-to-br from-error/3 to-rose-50/50 border border-error/20 shadow-sm">
           <div class="card-body p-5 gap-4">
             <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center">
+              <div class="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
                 <i class="fa-solid fa-paper-plane text-error text-sm"></i>
               </div>
-              <h2 class="font-bold text-base-content">Gửi điểm & nhận xét cho học viên</h2>
+              <h2 class="font-bold text-base-content">Gửi điểm &amp; nhận xét cho học viên</h2>
             </div>
-            <div class="grid gap-3 sm:grid-cols-2">
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Điểm chấm tay (0–10)</span>
+
+            <!-- Hàng 1: Điểm chấm tay + Phần chưa đạt -->
+            <div class="grid gap-3 sm:grid-cols-2 items-start">
+              <div class="flex flex-col gap-1">
+                <label class="text-sm font-semibold text-base-content">Điểm chấm tay (0–10)</label>
                 <input type="number" step="0.5" min="0" max="10"
-                  [(ngModel)]="manualScore" class="input" />
-              </label>
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1 flex items-center justify-between">
-                  <span>Phần chưa đạt (cách nhau bằng ;)</span>
+                  [(ngModel)]="manualScore" class="input input-sm w-full" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-semibold text-base-content">Phần chưa đạt (cách nhau bằng ;)</label>
                   <button type="button" (click)="suggestWeakTags()"
                     class="btn btn-ghost btn-xs text-warning gap-1">
-                    <i class="fa-solid fa-wand-magic-sparkles fa-xs"></i> Gợi ý theo câu sai
+                    <i class="fa-solid fa-wand-magic-sparkles fa-xs"></i> Gợi ý
                   </button>
-                </span>
-                <input [(ngModel)]="weakTags" placeholder="Ngữ pháp Bài 1;Phiên âm"
-                  class="input" />
-              </label>
-              <label class="form-control sm:col-span-2">
-                <span class="label-text text-sm font-semibold mb-1">Nhận xét chung</span>
-                <div class="flex flex-wrap gap-1.5 mb-1.5">
-                  @for (t of templates; track t.label) {
-                    <button type="button" (click)="appendTemplate(t.text)"
-                      class="btn btn-ghost btn-xs border border-base-200 gap-1 text-base-content/60">
-                      <i class="fa-regular fa-comment-dots fa-xs"></i> {{ t.label }}
-                    </button>
-                  }
                 </div>
-                <textarea [(ngModel)]="comment" rows="2" class="textarea"
-                  placeholder="VD: Em làm tốt, cần ôn lại trật tự từ."></textarea>
-              </label>
-              <label class="form-control sm:col-span-2">
-                <span class="label-text text-sm font-semibold mb-1">Việc cần làm trước buổi sau (cách nhau bằng ;)</span>
-                <input [(ngModel)]="todos" placeholder="Học lại ngữ pháp Bài 1; Làm lại trò ghép từ"
-                  class="input" />
-              </label>
+                <input [(ngModel)]="weakTags" placeholder="Ngữ pháp Bài 1;Phiên âm"
+                  class="input input-sm w-full" />
+              </div>
             </div>
-            <div class="flex flex-wrap justify-end gap-2 pt-1">
+
+            <!-- Hàng 2: Nhận xét chung -->
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-semibold text-base-content">Nhận xét chung</label>
+              <div class="flex flex-wrap gap-1.5 mb-1">
+                @for (t of templates; track t.label) {
+                  <button type="button" (click)="appendTemplate(t.text)"
+                    class="btn btn-ghost btn-xs border border-base-200 gap-1 text-base-content/60">
+                    <i class="fa-regular fa-comment-dots fa-xs"></i> {{ t.label }}
+                  </button>
+                }
+              </div>
+              <textarea [(ngModel)]="comment" rows="2" class="textarea textarea-bordered w-full text-sm"
+                placeholder="VD: Em làm tốt, cần ôn lại trật tự từ."></textarea>
+            </div>
+
+            <!-- Hàng 3: Việc cần làm -->
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-semibold text-base-content">Việc cần làm trước buổi sau (cách nhau bằng ;)</label>
+              <input [(ngModel)]="todos" placeholder="Học lại ngữ pháp Bài 1; Làm lại trò ghép từ"
+                class="input input-sm w-full" />
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap justify-end gap-2 pt-1 border-t border-error/10">
               <button type="button" (click)="openBulkApply()"
-                class="btn btn-ghost gap-2 border border-base-200"
+                class="btn btn-ghost btn-sm gap-2 border border-base-200"
                 [disabled]="!comment.trim()">
                 <i class="fa-solid fa-users"></i> Áp dụng cho HV cùng lỗi
               </button>

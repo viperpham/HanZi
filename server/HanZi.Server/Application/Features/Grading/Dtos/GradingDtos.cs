@@ -8,7 +8,8 @@ public record SubmissionDetailDto(
     Guid Id, Guid AssignmentId, Guid? LessonId, Guid StudentId, string StudentName, string Status,
     DateTime? SubmittedAt, decimal AutoScore, decimal ManualScore, decimal FinalScore,
     IReadOnlyList<AnswerDetailDto> Answers,
-    GradingNoteDto? Note);
+    GradingNoteDto? Note,
+    string? Title = null);
 
 public record AnswerDetailDto(
     Guid QuestionId, int OrderNo, string QuestionType, string Prompt, decimal Points,

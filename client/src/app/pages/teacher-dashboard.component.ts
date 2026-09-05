@@ -29,56 +29,87 @@ interface TeacherHome {
     <div class="space-y-6">
 
       <!-- Page Header -->
-      <div>
-        <h1 class="text-2xl font-extrabold text-base-content">Bảng điều khiển</h1>
-        <p class="text-sm text-base-content/50 mt-1">Tổng quan hoạt động giảng dạy của bạn</p>
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-extrabold text-base-content">Bảng điều khiển</h1>
+          <p class="text-sm text-base-content/50 mt-1">Tổng quan hoạt động giảng dạy của bạn</p>
+        </div>
+        <a routerLink="/grading" class="btn btn-error btn-sm text-white gap-2">
+          <i class="fa-solid fa-pen-nib fa-sm"></i> Chấm bài ngay
+        </a>
       </div>
 
-      <!-- Stat Cards -->
-      <div class="stats stats-vertical md:stats-horizontal shadow-sm border border-base-200 w-full bg-base-100">
-        <a routerLink="/grading" class="stat hover:bg-base-200 transition-colors cursor-pointer">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center">
-              <i class="fa-solid fa-pen-to-square text-error text-xl"></i>
+      <!-- Stat Cards — grid 2×2 trên mobile, 4 cột trên md -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a routerLink="/grading"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-error/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-pen-to-square text-error text-lg"></i>
+              </div>
+              @if ((data?.pendingGrading ?? 0) > 0) {
+                <span class="badge badge-error badge-sm text-white font-bold">{{ data!.pendingGrading }}</span>
+              }
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Bài chờ chấm</p>
+              <p class="text-2xl font-extrabold text-error mt-0.5">{{ data?.pendingGrading ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Cần xử lý sớm</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Bài chờ chấm</div>
-          <div class="stat-value text-error">{{ data?.pendingGrading ?? 0 }}</div>
-          <div class="stat-desc">Cần xử lý sớm</div>
         </a>
 
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-              <i class="fa-solid fa-chalkboard text-success text-xl"></i>
+        <a routerLink="/classes"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-success/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-chalkboard text-success text-lg"></i>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-base-content/20"></i>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Lớp đang dạy</p>
+              <p class="text-2xl font-extrabold text-success mt-0.5">{{ data?.classesCount ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Đang hoạt động</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Lớp đang dạy</div>
-          <div class="stat-value text-success">{{ data?.classesCount ?? 0 }}</div>
-          <div class="stat-desc">Đang hoạt động</div>
-        </div>
+        </a>
 
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-info/10 flex items-center justify-center">
-              <i class="fa-solid fa-book-open text-info text-xl"></i>
+        <a routerLink="/curriculums"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-info/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-info/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-book-open text-info text-lg"></i>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-base-content/20"></i>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Giáo trình</p>
+              <p class="text-2xl font-extrabold text-info mt-0.5">{{ data?.curriculumsCount ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Đang phụ trách</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Giáo trình</div>
-          <div class="stat-value text-info">{{ data?.curriculumsCount ?? 0 }}</div>
-          <div class="stat-desc">Đang phụ trách</div>
-        </div>
+        </a>
 
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-              <i class="fa-solid fa-clock text-warning text-xl"></i>
+        <a routerLink="/assignments"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-warning/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-clock text-warning text-lg"></i>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-base-content/20"></i>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Nộp đúng hạn</p>
+              <p class="text-2xl font-extrabold text-warning mt-0.5">{{ data?.onTimeRate ?? 0 }}%</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Tỉ lệ học viên</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Nộp đúng hạn</div>
-          <div class="stat-value text-warning">{{ data?.onTimeRate ?? 0 }}%</div>
-          <div class="stat-desc">Tỉ lệ học viên</div>
-        </div>
+        </a>
       </div>
 
       <!-- Content Grid -->
@@ -87,13 +118,18 @@ interface TeacherHome {
         <!-- Pending Submissions -->
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
-            <h2 class="card-title text-base font-bold mb-3">
-              <i class="fa-solid fa-inbox text-base-content/50 mr-1"></i>
-              Bài cần chấm ngay
-            </h2>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="card-title text-base font-bold">
+                <i class="fa-solid fa-inbox text-base-content/50"></i>
+                Bài cần chấm ngay
+              </h2>
+              <a routerLink="/grading" class="btn btn-ghost btn-xs gap-1 text-error">
+                Xem tất cả <i class="fa-solid fa-arrow-right fa-xs"></i>
+              </a>
+            </div>
             <div class="space-y-2">
               @for (p of data?.pendingList ?? []; track p.submissionId) {
-                <div class="flex items-center gap-3 p-3 rounded-xl hover:bg-base-200 transition-colors">
+                <div class="flex items-center gap-3 p-3 rounded-xl border border-base-200 hover:bg-base-200 transition-colors">
                   <div class="w-9 h-9 rounded-full bg-error/10 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-file-lines text-sm text-error"></i>
                   </div>
@@ -121,7 +157,7 @@ interface TeacherHome {
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
             <h2 class="card-title text-base font-bold mb-4">
-              <i class="fa-solid fa-chart-column text-base-content/50 mr-1"></i>
+              <i class="fa-solid fa-chart-column text-base-content/50"></i>
               Nộp bài 7 ngày qua
             </h2>
             <div class="relative h-44">
@@ -138,10 +174,15 @@ interface TeacherHome {
         <!-- Lịch dạy + bài đang học của từng lớp -->
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
-            <h2 class="card-title text-base font-bold mb-3">
-              <i class="fa-solid fa-calendar-days text-base-content/50 mr-1"></i>
-              Lịch dạy &amp; bài đang học
-            </h2>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="card-title text-base font-bold">
+                <i class="fa-solid fa-calendar-days text-base-content/50"></i>
+                Lịch dạy &amp; bài đang học
+              </h2>
+              <a routerLink="/classes" class="btn btn-ghost btn-xs gap-1 text-base-content/50">
+                Xem lớp <i class="fa-solid fa-arrow-right fa-xs"></i>
+              </a>
+            </div>
             <div class="space-y-2">
               @for (c of data?.todayClasses ?? []; track c.classId) {
                 <div class="p-3 rounded-xl border border-base-200 hover:border-error/30 transition-colors">
@@ -184,7 +225,7 @@ interface TeacherHome {
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
             <h2 class="card-title text-base font-bold mb-3">
-              <i class="fa-solid fa-user-clock text-base-content/50 mr-1"></i>
+              <i class="fa-solid fa-user-clock text-base-content/50"></i>
               Học viên cần chú ý
             </h2>
             <div class="space-y-2">
@@ -219,27 +260,27 @@ interface TeacherHome {
         </div>
 
         <!-- Hoạt động gần đây -->
-        <div class="card bg-base-100 border border-base-200 shadow-sm">
+        <div class="card bg-base-100 border border-base-200 shadow-sm lg:col-span-2">
           <div class="card-body p-5">
             <h2 class="card-title text-base font-bold mb-3">
-              <i class="fa-solid fa-wave-square text-base-content/50 mr-1"></i>
+              <i class="fa-solid fa-wave-square text-base-content/50"></i>
               Hoạt động gần đây
             </h2>
-            <div class="space-y-2">
+            <div class="grid sm:grid-cols-2 gap-1">
               @for (a of data?.recentActivities ?? []; track a.id) {
                 <div class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-base-200 transition-colors">
                   <div class="w-8 h-8 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-bolt text-xs text-info"></i>
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm text-base-content">
+                    <p class="text-sm text-base-content truncate">
                       <span class="font-semibold">{{ a.actorName }}</span> — {{ a.action }}
                     </p>
                     <p class="text-xs text-base-content/40">{{ a.createdAt | date:'dd/MM HH:mm' }}</p>
                   </div>
                 </div>
               } @empty {
-                <div class="py-8 text-center">
+                <div class="py-8 text-center sm:col-span-2">
                   <i class="fa-solid fa-wind text-3xl text-base-content/20"></i>
                   <p class="text-sm text-base-content/40 mt-2">Chưa có hoạt động nào</p>
                 </div>

@@ -299,15 +299,30 @@ interface SubStats {
                       <td class="font-semibold text-sm">{{ s.studentName }}</td>
                       <td class="text-sm text-base-content/60">{{ s.submittedAt | date:'dd/MM HH:mm' }}</td>
                       <td>
-                        @if (s.status === 'Graded') { <span class="badge badge-success badge-sm text-white">Đã chấm</span> }
-                        @else if (s.status === 'Submitted') { <span class="badge badge-warning badge-sm text-white">Chờ chấm</span> }
-                        @else { <span class="badge badge-ghost badge-sm">Chưa nộp</span> }
+                        @if (s.status === 'Graded') {
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-success/15 text-success border border-success/25">
+                            <i class="fa-solid fa-circle-check fa-xs"></i> Đã chấm
+                          </span>
+                        } @else if (s.status === 'Submitted') {
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-warning/15 text-warning border border-warning/25">
+                            <i class="fa-solid fa-hourglass-half fa-xs"></i> Chờ chấm
+                          </span>
+                        } @else {
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/50">
+                            <i class="fa-solid fa-minus fa-xs"></i> Chưa nộp
+                          </span>
+                        }
                       </td>
                       <td class="font-bold text-info">{{ s.autoScore }}</td>
                       <td><span [class]="s.status === 'Graded' ? 'font-extrabold text-success' : 'font-extrabold text-base-content/20'">{{ s.finalScore }}</span></td>
                       <td>
-                        @if (s.noteSent) { <span class="badge badge-success badge-sm gap-1"><i class="fa-solid fa-check fa-xs"></i> Đã gửi</span> }
-                        @else { <span class="text-base-content/30">—</span> }
+                        @if (s.noteSent) {
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-success/15 text-success border border-success/25">
+                            <i class="fa-solid fa-check fa-xs"></i> Đã gửi
+                          </span>
+                        } @else {
+                          <span class="text-base-content/30 text-sm">—</span>
+                        }
                       </td>
                       <td class="text-right whitespace-nowrap">
                         @if (s.status === 'Doing') {
@@ -496,11 +511,15 @@ interface SubStats {
                     </div>
                     <div class="ml-auto flex gap-0.5">
                       <button (click)="moveQ(qi, -1)" [disabled]="qi === 0"
-                        class="btn btn-ghost btn-xs btn-square disabled:opacity-20">↑</button>
+                        class="btn btn-ghost btn-xs btn-square disabled:opacity-20" title="Di chuyển lên">
+                        <i class="fa-solid fa-chevron-up fa-xs"></i>
+                      </button>
                       <button (click)="moveQ(qi, 1)" [disabled]="qi === e.questions.length - 1"
-                        class="btn btn-ghost btn-xs btn-square disabled:opacity-20">↓</button>
+                        class="btn btn-ghost btn-xs btn-square disabled:opacity-20" title="Di chuyển xuống">
+                        <i class="fa-solid fa-chevron-down fa-xs"></i>
+                      </button>
                       <button (click)="delQ(qi)"
-                        class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10">
+                        class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10" title="Xoá câu">
                         <i class="fa-solid fa-trash fa-xs"></i>
                       </button>
                     </div>
@@ -524,12 +543,21 @@ interface SubStats {
                           <button (click)="setAns(q, oi)"
                             class="grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-bold transition-colors"
                             [class]="isAns(q, oi) ? 'border-success bg-success text-white' : 'border-base-300 text-base-content/40 hover:border-success/50'"
-                            title="Chọn là đáp án đúng">{{ isAns(q, oi) ? '✓' : ['A','B','C','D'][oi] }}</button>
+                            title="Chọn là đáp án đúng">
+                            @if (isAns(q, oi)) {
+                              <i class="fa-solid fa-check fa-xs"></i>
+                            } @else {
+                              {{ ['A','B','C','D'][oi] }}
+                            }
+                          </button>
                           <input [(ngModel)]="q.options[oi]" placeholder="Nội dung lựa chọn…"
                             class="input input-sm grow"
                             [class.input-success]="isAns(q, oi)" />
                           <button (click)="delOpt(q, oi)"
-                            class="btn btn-ghost btn-xs btn-square text-base-content/30 hover:text-error hover:bg-error/10">✕</button>
+                            class="btn btn-ghost btn-xs btn-square text-base-content/30 hover:text-error hover:bg-error/10"
+                            title="Xoá lựa chọn">
+                            <i class="fa-solid fa-xmark fa-xs"></i>
+                          </button>
                         </div>
                       }
                       <button (click)="addOpt(q)" class="btn btn-ghost btn-xs gap-1 text-base-content/50 hover:text-base-content">

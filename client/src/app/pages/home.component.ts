@@ -22,55 +22,84 @@ interface StudentHome {
     <div class="space-y-6">
 
       <!-- Page Header -->
-      <div>
-        <h1 class="text-2xl font-extrabold text-base-content">Trang chủ</h1>
-        <p class="text-sm text-base-content/50 mt-1">Chào mừng bạn quay lại!</p>
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-extrabold text-base-content">Trang chủ</h1>
+          <p class="text-sm text-base-content/50 mt-1">Chào mừng bạn quay lại!</p>
+        </div>
+        <a routerLink="/learn" class="btn btn-error btn-sm text-white gap-2">
+          <i class="fa-solid fa-graduation-cap fa-sm"></i> Vào học bài
+        </a>
       </div>
 
-      <!-- Stat Cards — DaisyUI Stats -->
-      <div class="stats stats-vertical md:stats-horizontal shadow-sm border border-base-200 w-full bg-base-100">
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-error/10 flex items-center justify-center">
-              <i class="fa-solid fa-file-pen text-error text-xl"></i>
+      <!-- Stat Cards — grid 2×2 trên mobile, 4 cột trên md -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a routerLink="/my-assignments"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-error/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-file-pen text-error text-lg"></i>
+              </div>
+              @if ((data?.assignmentsPending ?? 0) > 0) {
+                <span class="badge badge-error badge-sm text-white font-bold">{{ data!.assignmentsPending }}</span>
+              }
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Bài cần nộp</p>
+              <p class="text-2xl font-extrabold text-error mt-0.5">{{ data?.assignmentsPending ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Chưa hoàn thành</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Bài cần nộp</div>
-          <div class="stat-value text-error">{{ data?.assignmentsPending ?? 0 }}</div>
-          <div class="stat-desc">Chưa hoàn thành</div>
-        </div>
+        </a>
 
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-              <i class="fa-solid fa-book-open-reader text-success text-xl"></i>
+        <a routerLink="/learn"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-success/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-book-open-reader text-success text-lg"></i>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-base-content/20"></i>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Bài đã học</p>
+              <p class="text-2xl font-extrabold text-success mt-0.5">{{ data?.lessonsStudied ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Tổng số hoàn thành</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Bài đã học</div>
-          <div class="stat-value text-success">{{ data?.lessonsStudied ?? 0 }}</div>
-          <div class="stat-desc">Tổng số bài hoàn thành</div>
-        </div>
+        </a>
 
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-info/10 flex items-center justify-center">
-              <i class="fa-solid fa-star text-info text-xl"></i>
+        <a routerLink="/results"
+          class="card bg-base-100 border border-base-200 shadow-sm hover:shadow-md hover:border-info/40 transition-all cursor-pointer">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-info/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-star text-info text-lg"></i>
+              </div>
+              <i class="fa-solid fa-arrow-up-right-from-square text-xs text-base-content/20"></i>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Điểm trung bình</p>
+              <p class="text-2xl font-extrabold text-info mt-0.5">{{ data?.avgScore ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Trên thang 10</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Điểm trung bình</div>
-          <div class="stat-value text-info">{{ data?.avgScore ?? 0 }}</div>
-          <div class="stat-desc">Trên thang 10</div>
-        </div>
+        </a>
 
-        <div class="stat">
-          <div class="stat-figure">
-            <div class="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-              <i class="fa-solid fa-fire text-warning text-xl"></i>
+        <div class="card bg-base-100 border border-base-200 shadow-sm">
+          <div class="card-body p-4 gap-3">
+            <div class="flex items-start justify-between">
+              <div class="w-11 h-11 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-fire text-warning text-lg"></i>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs text-base-content/50 font-medium">Chuỗi ngày học</p>
+              <p class="text-2xl font-extrabold text-warning mt-0.5">{{ data?.streakDays ?? 0 }}</p>
+              <p class="text-xs text-base-content/40 mt-0.5">Ngày liên tiếp</p>
             </div>
           </div>
-          <div class="stat-title text-xs">Chuỗi ngày học</div>
-          <div class="stat-value text-warning">{{ data?.streakDays ?? 0 }}</div>
-          <div class="stat-desc">Ngày liên tiếp</div>
         </div>
       </div>
 
@@ -78,12 +107,12 @@ interface StudentHome {
       @if ((data?.recentNoteCount ?? 0) > 0) {
         <a routerLink="/results"
           class="alert bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 transition-colors cursor-pointer">
-          <i class="fa-solid fa-comment-dots text-lg"></i>
+          <i class="fa-solid fa-comment-dots text-lg shrink-0"></i>
           <span class="text-sm">
             <b>Giáo viên vừa gửi ghi chú cho bạn</b> — {{ data!.recentNoteCount }} ghi chú chấm bài trong 3 ngày qua.
             <span class="font-bold underline">Xem ngay</span>
           </span>
-          <i class="fa-solid fa-arrow-right"></i>
+          <i class="fa-solid fa-arrow-right shrink-0"></i>
         </a>
       }
 
@@ -123,10 +152,15 @@ interface StudentHome {
         <!-- Upcoming Assignments -->
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
-            <h2 class="card-title text-base font-bold mb-3">
-              <i class="fa-solid fa-clock text-base-content/50 mr-1"></i>
-              Bài tập sắp đến hạn
-            </h2>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="card-title text-base font-bold">
+                <i class="fa-solid fa-clock text-base-content/50"></i>
+                Bài tập sắp đến hạn
+              </h2>
+              <a routerLink="/my-assignments" class="btn btn-ghost btn-xs gap-1 text-error">
+                Xem tất cả <i class="fa-solid fa-arrow-right fa-xs"></i>
+              </a>
+            </div>
             <div class="space-y-2">
               @for (u of data?.upcoming ?? []; track u.assignmentId) {
                 <div class="flex items-center gap-3 p-3 rounded-xl border border-base-200 hover:bg-base-200 transition-colors">
@@ -146,7 +180,7 @@ interface StudentHome {
                 </div>
               } @empty {
                 <div class="py-6 text-center">
-                  <i class="fa-solid fa-party-horn text-3xl text-success/60"></i>
+                  <i class="fa-solid fa-circle-check text-3xl text-success/60"></i>
                   <p class="text-sm text-base-content/40 mt-2">Không có bài tập nào đến hạn!</p>
                 </div>
               }
@@ -158,7 +192,7 @@ interface StudentHome {
         <div class="card bg-base-100 border border-base-200 shadow-sm">
           <div class="card-body p-5">
             <h2 class="card-title text-base font-bold mb-3">
-              <i class="fa-solid fa-chalkboard text-base-content/50 mr-1"></i>
+              <i class="fa-solid fa-chalkboard text-base-content/50"></i>
               Lớp của tôi
             </h2>
             <div class="space-y-3">
@@ -178,7 +212,9 @@ interface StudentHome {
                   </p>
                   <progress class="progress progress-error w-full h-1.5"
                     [value]="c.progressPercent" max="100"></progress>
-                  <p class="mt-1.5 text-[11px] text-error/70 font-semibold text-right">Xem lớp →</p>
+                  <p class="mt-1.5 text-[11px] text-error/70 font-semibold text-right flex items-center justify-end gap-1">
+                    Xem lớp <i class="fa-solid fa-arrow-right fa-xs"></i>
+                  </p>
                 </a>
               } @empty {
                 <div class="py-6 text-center">

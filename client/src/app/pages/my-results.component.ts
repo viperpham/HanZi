@@ -5,329 +5,462 @@ import { RouterLink } from '@angular/router';
 import { ToastService } from '../toast.service';
 
 interface AnswerDetail {
-  questionId: string; orderNo: number; questionType: string; prompt: string; points: number;
-  options?: string[]; correctAnswer?: string; sampleAnswer?: string;
-  answerText?: string; autoScore?: number; teacherComment?: string; knowledgeTag?: string;
-}
-interface Note { weakTags: string[]; comment?: string; todos: string[]; sentAt?: string; reply?: string; }
-interface SubDetail {
-  id: string; title?: string; lessonId?: string; status: string; autoScore: number; manualScore: number; finalScore: number;
-  answers: AnswerDetail[]; note?: Note;
+  questionId: string;
+  orderNo: number;
+  questionType: string;
+  prompt: string;
+  points: number;
+  options?: string[];
+  correctAnswer?: string;
+  sampleAnswer?: string;
+  answerText?: string;
+  autoScore?: number;
+  teacherComment?: string;
+  knowledgeTag?: string;
 }
 
-const SCORE_COLOR = (score: number) => {
-  if (score >= 8) return 'text-success';
-  if (score >= 5) return 'text-warning';
-  return 'text-error';
-};
+interface Note {
+  weakTags: string[];
+  comment?: string;
+  todos: string[];
+  sentAt?: string;
+  reply?: string;
+}
+
+interface SubDetail {
+  id: string;
+  assignmentId?: string;
+  title?: string;
+  lessonId?: string;
+  status: string;
+  submittedAt?: string;
+  autoScore: number;
+  manualScore: number;
+  finalScore: number;
+  answers: AnswerDetail[];
+  note?: Note;
+}
 
 @Component({
   selector: 'app-my-results',
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `
-    <div class="space-y-6">
+    <div class="max-w-6xl mx-auto space-y-6 pb-12">
 
-      <!-- ===== HEADER ===== -->
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 class="text-2xl font-extrabold text-base-content">Kết quả học tập</h1>
-          <p class="text-sm text-base-content/50 mt-0.5">Chi tiết điểm số và nhận xét của giáo viên</p>
+      <!-- ===== HEADER TRANG ===== -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-base-200">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl shadow-xs">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl font-black tracking-tight text-base-content">Kết quả học tập</h1>
+            <p class="text-sm text-base-content/60 mt-0.5">Chi tiết điểm số và nhận xét của giáo viên</p>
+          </div>
         </div>
+
         @if (subs.length) {
-          <div class="flex items-center gap-3">
-            <div class="text-center">
-              <p class="text-lg font-extrabold text-success">{{ gradedCount }}</p>
-              <p class="text-xs text-base-content/40">Đã chấm</p>
+          <div class="flex items-center gap-3 self-start sm:self-auto">
+            <!-- Thống kê đã chấm -->
+            <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-base-100 border border-base-200 shadow-xs">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <i class="fa-solid fa-clipboard-check text-sm"></i>
+              </div>
+              <div>
+                <p class="text-base font-extrabold text-base-content leading-tight">{{ gradedCount }}</p>
+                <p class="text-[11px] font-medium text-base-content/50 uppercase tracking-wider">Đã chấm</p>
+              </div>
             </div>
-            <div class="w-px h-8 bg-base-200"></div>
-            <div class="text-center">
-              <p class="text-lg font-extrabold" [class]="avgScore >= 8 ? 'text-success' : avgScore >= 5 ? 'text-warning' : 'text-error'">
-                {{ avgScore.toFixed(1) }}
-              </p>
-              <p class="text-xs text-base-content/40">Điểm TB</p>
+
+            <!-- Thống kê điểm trung bình -->
+            <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-base-100 border border-base-200 shadow-xs">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                <i class="fa-solid fa-star-half-stroke text-sm"></i>
+              </div>
+              <div>
+                <p class="text-base font-extrabold leading-tight" [class]="avgScore >= 8 ? 'text-emerald-600' : avgScore >= 5 ? 'text-amber-600' : 'text-rose-600'">
+                  {{ avgScore.toFixed(1) }} <span class="text-xs font-normal text-base-content/40">/10</span>
+                </p>
+                <p class="text-[11px] font-medium text-base-content/50 uppercase tracking-wider">Điểm TB</p>
+              </div>
             </div>
           </div>
         }
       </div>
 
-      <!-- ===== DANH SÁCH KẾT QUẢ ===== -->
+      <!-- ===== DANH SÁCH BÀI NỘP ===== -->
       @for (s of subs; track s.id) {
-        <div class="card bg-base-100 shadow-sm transition-shadow hover:shadow-md"
-          [class]="s.status === 'Graded' ? 'border border-base-200' : 'border border-dashed border-base-300'">
-          <div class="card-body p-5">
+        <div class="card bg-base-100 border border-base-200 shadow-xs overflow-hidden transition-all duration-200">
 
-            <!-- Summary row -->
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <!-- Status Icon -->
-                @if (s.status === 'Graded') {
-                  <div class="w-12 h-12 rounded-2xl bg-success/10 flex items-center justify-center shrink-0 border border-success/20">
-                    <i class="fa-solid fa-circle-check text-2xl text-success"></i>
-                  </div>
-                } @else if (s.status === 'Submitted') {
-                  <div class="w-12 h-12 rounded-2xl bg-warning/10 flex items-center justify-center shrink-0 border border-warning/20">
-                    <i class="fa-solid fa-hourglass-half text-2xl text-warning"></i>
-                  </div>
-                } @else {
-                  <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center shrink-0">
-                    <i class="fa-solid fa-file-lines text-2xl text-base-content/30"></i>
-                  </div>
-                }
+          <!-- Card Header / Summary bar (Click để đóng/mở) -->
+          <div (click)="toggle(s)"
+            class="p-5 flex flex-wrap items-center justify-between gap-4 cursor-pointer hover:bg-base-200/40 transition-colors select-none">
 
-                <div>
-                  <p class="font-bold text-base text-base-content">{{ s.title ?? 'Bài nộp' }}</p>
-                  <div class="flex items-center gap-2 mt-1">
-                    @if (s.status === 'Graded') {
-                      <span class="inline-flex items-center gap-1 text-xs font-semibold text-success">
-                        <i class="fa-solid fa-check fa-xs"></i> Đã chấm điểm
-                      </span>
-                    } @else if (s.status === 'Submitted') {
-                      <span class="inline-flex items-center gap-1 text-xs font-semibold text-warning">
-                        <i class="fa-solid fa-clock fa-xs"></i> Chờ giáo viên chấm
-                      </span>
-                    } @else {
-                      <span class="text-xs text-base-content/40">Bản nháp</span>
-                    }
-                    @if (s.note?.sentAt) {
-                      <span class="inline-flex items-center gap-1 text-xs font-semibold text-info">
-                        <i class="fa-solid fa-comment fa-xs"></i> Có nhận xét GV
-                      </span>
-                    }
-                  </div>
+            <!-- Bên trái: Icon & Tiêu đề -->
+            <div class="flex items-center gap-4 min-w-0">
+              <!-- Icon trạng thái bài nộp -->
+              @if (s.status === 'Graded') {
+                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/80 shadow-xs">
+                  <i class="fa-solid fa-circle-check text-xl"></i>
                 </div>
-              </div>
+              } @else if (s.status === 'Submitted') {
+                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/80 shadow-xs">
+                  <i class="fa-solid fa-clock text-xl"></i>
+                </div>
+              } @else {
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center shrink-0 border border-slate-200">
+                  <i class="fa-solid fa-file-pen text-xl"></i>
+                </div>
+              }
 
-              <!-- Điểm + Toggle -->
-              <div class="flex items-center gap-5">
-                @if (s.status === 'Graded') {
-                  <!-- Score ring -->
-                  <div class="relative flex items-center justify-center">
-                    <svg class="w-14 h-14 -rotate-90" viewBox="0 0 48 48">
-                      <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor"
-                        class="text-base-200" stroke-width="4"/>
-                      <circle cx="24" cy="24" r="20" fill="none"
-                        [attr.stroke]="s.finalScore >= 8 ? '#16a34a' : s.finalScore >= 5 ? '#d97706' : '#dc2626'"
-                        stroke-width="4" stroke-linecap="round"
-                        [attr.stroke-dasharray]="'125.6'"
-                        [attr.stroke-dashoffset]="125.6 - (s.finalScore / 10) * 125.6"/>
-                    </svg>
-                    <div class="absolute text-center">
-                      <p class="text-base font-extrabold leading-none" [class]="scoreColor(s.finalScore)">{{ s.finalScore }}</p>
-                      <p class="text-[9px] text-base-content/40 leading-none">/10</p>
-                    </div>
-                  </div>
-                } @else {
-                  <div class="w-14 h-14 flex items-center justify-center">
-                    <span class="text-2xl font-extrabold text-base-content/15">—</span>
-                  </div>
-                }
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h2 class="font-bold text-base sm:text-lg text-base-content truncate">
+                    {{ s.title || 'Bài tập thực hành' }}
+                  </h2>
+                </div>
 
-                <button (click)="toggle(s)"
-                  class="btn btn-sm gap-2"
-                  [class]="openId === s.id ? 'btn-error text-white' : 'btn-outline'">
-                  @if (openId === s.id) {
-                    <i class="fa-solid fa-chevron-up fa-xs"></i> Ẩn
+                <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                  @if (s.status === 'Graded') {
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <i class="fa-solid fa-check fa-xs"></i> Đã chấm điểm
+                    </span>
+                  } @else if (s.status === 'Submitted') {
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      <i class="fa-solid fa-hourglass-half fa-xs"></i> Chờ giáo viên chấm
+                    </span>
                   } @else {
-                    <i class="fa-solid fa-chevron-down fa-xs"></i> Chi tiết
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                      <i class="fa-solid fa-pen-ruler fa-xs"></i> Bản nháp
+                    </span>
                   }
-                </button>
+
+                  @if (s.note?.sentAt) {
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <i class="fa-solid fa-comment-dots fa-xs"></i> Có nhận xét GV
+                    </span>
+                  }
+
+                  @if (s.submittedAt) {
+                    <span class="text-xs text-base-content/40 flex items-center gap-1 ml-1">
+                      <i class="fa-regular fa-calendar fa-xs"></i>
+                      {{ formatTime(s.submittedAt) }}
+                    </span>
+                  }
+                </div>
               </div>
             </div>
 
-            <!-- ===== Chi tiết ===== -->
-            @if (openId === s.id) {
-              <div class="mt-5 pt-5 border-t border-base-200 space-y-4 animate-fadeIn">
+            <!-- Bên phải: Điểm số & Nút toggle -->
+            <div class="flex items-center gap-4 shrink-0 ml-auto" (click)="$event.stopPropagation()">
+              @if (s.status === 'Graded') {
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl border"
+                  [class]="s.finalScore >= 8 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : s.finalScore >= 5 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-rose-50 border-rose-200 text-rose-700'">
+                  <i class="fa-solid fa-award text-sm"></i>
+                  <span class="text-lg font-black leading-none">{{ s.finalScore }}</span>
+                  <span class="text-xs opacity-60 leading-none">/ 10</span>
+                </div>
+              } @else {
+                <div class="px-3 py-1.5 rounded-xl bg-base-200 text-base-content/50 text-xs font-semibold">
+                  Chưa có điểm
+                </div>
+              }
 
-                <!-- Score breakdown -->
-                @if (s.status === 'Graded') {
-                  <div class="grid grid-cols-3 gap-3">
-                    <div class="rounded-xl bg-info/5 border border-info/20 p-3 text-center">
-                      <p class="text-xs font-semibold text-info/70 uppercase tracking-wide mb-1">Tự động</p>
-                      <p class="text-2xl font-extrabold text-info">{{ s.autoScore }}</p>
-                    </div>
-                    <div class="rounded-xl bg-warning/5 border border-warning/20 p-3 text-center">
-                      <p class="text-xs font-semibold text-warning/70 uppercase tracking-wide mb-1">Chấm tay</p>
-                      <p class="text-2xl font-extrabold text-warning">{{ s.manualScore }}</p>
-                    </div>
-                    <div class="rounded-xl p-3 text-center border"
-                      [class]="s.finalScore >= 8 ? 'bg-success/5 border-success/20' : s.finalScore >= 5 ? 'bg-warning/5 border-warning/20' : 'bg-error/5 border-error/20'">
-                      <p class="text-xs font-semibold uppercase tracking-wide mb-1"
-                        [class]="s.finalScore >= 8 ? 'text-success/70' : s.finalScore >= 5 ? 'text-warning/70' : 'text-error/70'">Điểm cuối</p>
-                      <p class="text-2xl font-extrabold" [class]="scoreColor(s.finalScore)">{{ s.finalScore }}</p>
-                    </div>
-                  </div>
+              <button (click)="toggle(s)"
+                class="btn btn-sm btn-outline gap-1.5 rounded-xl font-medium"
+                [class.btn-primary]="openId === s.id">
+                @if (openId === s.id) {
+                  <span>Thu gọn</span>
+                  <i class="fa-solid fa-chevron-up fa-xs"></i>
+                } @else {
+                  <span>Chi tiết</span>
+                  <i class="fa-solid fa-chevron-down fa-xs"></i>
                 }
+              </button>
+            </div>
+          </div>
 
-                <!-- Điểm theo mảng kiến thức -->
-                @if (tagStats(s).length) {
-                  <div class="rounded-xl border border-base-200 p-4">
-                    <p class="text-xs font-bold uppercase tracking-wide text-base-content/40 mb-3 flex items-center gap-1.5">
-                      <i class="fa-solid fa-chart-simple fa-xs"></i> Điểm theo từng phần
-                    </p>
-                    <div class="space-y-2.5">
-                      @for (t of tagStats(s); track t.tag) {
-                        <div>
-                          <div class="flex items-center justify-between text-xs mb-1">
-                            <span class="font-semibold text-base-content/70">{{ t.tag }}</span>
-                            <span class="text-base-content/40">{{ t.got }}/{{ t.max }} điểm</span>
-                          </div>
-                          <progress class="progress h-2 w-full"
-                            [class.progress-success]="t.pct >= 80"
-                            [class.progress-warning]="t.pct >= 50 && t.pct < 80"
-                            [class.progress-error]="t.pct < 50"
-                            [value]="t.pct" max="100"></progress>
-                        </div>
-                      }
-                    </div>
+          <!-- ===== NỘI DUNG CHI TIẾT MỞ RỘNG ===== -->
+          @if (openId === s.id) {
+            <div class="p-5 lg:p-6 border-t border-base-200 bg-base-200/20 animate-fadeIn">
+              <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- CỘT CHÍNH (8/12): Danh sách câu trả lời & chấm câu -->
+                <div class="lg:col-span-7 xl:col-span-8 space-y-4">
+                  <div class="flex items-center justify-between pb-2 border-b border-base-200">
+                    <h3 class="font-bold text-sm text-base-content/80 uppercase tracking-wider flex items-center gap-2">
+                      <i class="fa-solid fa-list-check text-primary"></i>
+                      Chi tiết bài làm ({{ s.answers.length }} câu hỏi)
+                    </h3>
                   </div>
-                }
 
-                <!-- Từng câu trả lời -->
-                @for (ans of s.answers; track ans.questionId; let i = $index) {
-                  <div class="rounded-xl border p-4"
-                    [class]="ans.autoScore !== null && ans.autoScore !== undefined
-                      ? (ans.autoScore > 0 ? 'border-success/25 bg-success/3' : 'border-error/20 bg-error/3')
-                      : 'border-warning/25 bg-warning/3'">
+                  @for (ans of s.answers; track ans.questionId; let i = $index) {
+                    <div class="rounded-xl bg-base-100 border p-4 shadow-2xs space-y-3 transition-colors"
+                      [class]="ans.autoScore !== null && ans.autoScore !== undefined
+                        ? (ans.autoScore > 0 ? 'border-emerald-200' : 'border-rose-200')
+                        : 'border-base-200'">
 
-                    <div class="flex items-center gap-2 mb-2.5">
-                      <!-- Số thứ tự -->
-                      <div class="w-6 h-6 rounded-md bg-base-200 flex items-center justify-center text-xs font-bold text-base-content/60 shrink-0">
-                        {{ i + 1 }}
-                      </div>
-
-                      <!-- Trạng thái câu -->
-                      @if (ans.autoScore !== null && ans.autoScore !== undefined) {
-                        @if (ans.autoScore > 0) {
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
-                                       bg-success/10 text-success border border-success/20">
-                            <i class="fa-solid fa-check fa-xs"></i> Đúng · {{ ans.autoScore }}/{{ ans.points }}đ
+                      <!-- Header câu hỏi: Số câu, mảng kiến thức, điểm -->
+                      <div class="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-base-200/60">
+                        <div class="flex items-center gap-2">
+                          <span class="w-6 h-6 rounded-lg bg-base-200 text-base-content/70 flex items-center justify-center text-xs font-extrabold">
+                            {{ i + 1 }}
                           </span>
-                        } @else {
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
-                                       bg-error/10 text-error border border-error/20">
-                            <i class="fa-solid fa-xmark fa-xs"></i> Sai · 0/{{ ans.points }}đ
-                          </span>
-                        }
-                      } @else {
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
-                                     bg-warning/10 text-warning border border-warning/20">
-                          <i class="fa-solid fa-pen-nib fa-xs"></i> Chấm tay
-                        </span>
-                      }
-                    </div>
-
-                    <p class="hanzi font-semibold text-sm text-base-content mb-1.5">{{ ans.prompt }}</p>
-                    <p class="hanzi text-sm text-base-content/60">
-                      Bạn trả lời: <span class="font-semibold text-base-content">{{ ans.answerText || '(bỏ trống)' }}</span>
-                    </p>
-
-                    @if (s.note?.sentAt && (ans.correctAnswer || ans.sampleAnswer)) {
-                      <p class="hanzi text-sm text-success mt-1.5 flex items-center gap-1.5">
-                        <i class="fa-solid fa-lightbulb fa-xs"></i>
-                        Đáp án: {{ ans.correctAnswer || ans.sampleAnswer }}
-                      </p>
-                    }
-
-                    @if (ans.teacherComment) {
-                      <div class="mt-2.5 flex items-start gap-2 rounded-lg bg-info/8 border border-info/20 px-3 py-2">
-                        <i class="fa-solid fa-comment text-info fa-sm mt-0.5 shrink-0"></i>
-                        <p class="text-sm text-info/90">{{ ans.teacherComment }}</p>
-                      </div>
-                    }
-                  </div>
-                }
-
-                <!-- Nhận xét của GV -->
-                @if (s.note?.sentAt) {
-                  <div class="rounded-xl border-2 border-dashed border-primary/25 bg-primary/4 p-5">
-                    <p class="text-xs font-bold uppercase tracking-wider text-primary mb-4 flex items-center gap-2">
-                      <i class="fa-solid fa-lock fa-sm"></i> Ghi chú riêng của giáo viên
-                    </p>
-
-                    @if (s.note!.weakTags.length) {
-                      <div class="flex flex-wrap gap-2 mb-4">
-                        <span class="text-xs font-semibold text-base-content/50 self-center">Cần cải thiện:</span>
-                        @for (t of s.note!.weakTags; track t) {
-                          <a [routerLink]="s.lessonId ? ['/learn', s.lessonId] : '/results'"
-                            [queryParams]="s.lessonId ? { part: weakTagToPart(t) } : null"
-                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
-                                         bg-error/10 text-error border border-error/20 hover:bg-error/20 transition-colors"
-                            title="Mở thẳng mục cần học lại trong bài">
-                            <i class="fa-solid fa-circle-xmark fa-xs"></i>{{ t }}
-                            @if (s.lessonId) { <i class="fa-solid fa-arrow-right fa-xs"></i> }
-                          </a>
-                        }
-                      </div>
-                      @if (s.lessonId) {
-                        <p class="text-xs text-base-content/40 mb-4">
-                          <i class="fa-solid fa-hand-pointer fa-xs mr-1"></i>Bấm vào thẻ để mở thẳng mục cần học lại trong bài.
-                        </p>
-                      }
-                    }
-
-                    @if (s.note!.comment) {
-                      <div class="rounded-lg bg-base-100 border border-base-200 px-4 py-3 mb-4">
-                        <p class="text-xs font-semibold text-base-content/40 mb-1">Nhận xét chung</p>
-                        <p class="text-sm text-base-content/80">{{ s.note!.comment }}</p>
-                      </div>
-                    }
-
-                    @if (s.note!.todos.length) {
-                      <div class="mb-4">
-                        <p class="text-xs font-semibold text-base-content/40 mb-2">Việc cần làm</p>
-                        <ul class="space-y-1.5">
-                          @for (t of s.note!.todos; track t) {
-                            <li class="flex items-start gap-2 text-sm text-base-content/70">
-                              <i class="fa-solid fa-circle-arrow-right text-primary fa-sm mt-0.5 shrink-0"></i>
-                              {{ t }}
-                            </li>
+                          @if (ans.knowledgeTag) {
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-base-200 text-base-content/70">
+                              <i class="fa-solid fa-tag fa-xs text-base-content/40"></i>
+                              {{ ans.knowledgeTag }}
+                            </span>
                           }
-                        </ul>
-                      </div>
-                    }
+                        </div>
 
-                    <!-- Reply -->
-                    @if (s.note!.reply) {
-                      <div class="flex items-start gap-2.5 rounded-lg bg-base-100 border border-base-200 px-4 py-3">
-                        <i class="fa-solid fa-reply text-base-content/30 mt-0.5 shrink-0"></i>
+                        <!-- Badge chấm điểm câu -->
                         <div>
-                          <p class="text-xs font-semibold text-base-content/40 mb-1">Phản hồi của bạn</p>
-                          <p class="text-sm text-base-content/70">{{ s.note!.reply }}</p>
+                          @if (ans.autoScore !== null && ans.autoScore !== undefined) {
+                            @if (ans.autoScore > 0) {
+                              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <i class="fa-solid fa-circle-check fa-xs"></i> Đúng · +{{ ans.autoScore }}/{{ ans.points }}đ
+                              </span>
+                            } @else {
+                              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                <i class="fa-solid fa-circle-xmark fa-xs"></i> Sai · 0/{{ ans.points }}đ
+                              </span>
+                            }
+                          } @else {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <i class="fa-solid fa-pen-nib fa-xs"></i> Chấm tay
+                            </span>
+                          }
                         </div>
                       </div>
-                    } @else {
-                      <div class="flex gap-2 pt-4 border-t border-primary/15 mt-4">
-                        <label class="input input-sm flex-1 flex items-center gap-2">
-                          <i class="fa-solid fa-pen text-base-content/25 fa-xs"></i>
-                          <input [(ngModel)]="replies[s.id]"
-                            placeholder="Nhắn lại cho giáo viên…" class="grow text-sm" />
-                        </label>
-                        <button (click)="reply(s)" class="btn btn-info btn-sm text-white gap-2">
-                          <i class="fa-solid fa-paper-plane fa-xs"></i> Gửi
-                        </button>
+
+                      <!-- Nội dung câu hỏi tiếng Trung -->
+                      <p class="hanzi font-semibold text-base text-base-content leading-relaxed">
+                        {{ ans.prompt }}
+                      </p>
+
+                      <!-- Câu trả lời của học viên -->
+                      <div class="rounded-lg bg-base-200/50 p-3 text-sm">
+                        <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider block mb-1">
+                          Câu trả lời của bạn:
+                        </span>
+                        <p class="hanzi font-medium text-base-content">
+                          {{ ans.answerText || '(Học viên không điền câu trả lời)' }}
+                        </p>
                       </div>
-                    }
-                  </div>
-                }
+
+                      <!-- Đáp án gợi ý / Đáp án đúng (nếu có) -->
+                      @if (ans.correctAnswer || ans.sampleAnswer) {
+                        <div class="rounded-lg bg-emerald-50/70 border border-emerald-200/80 p-3 text-sm text-emerald-950">
+                          <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <i class="fa-solid fa-lightbulb fa-xs"></i> Đáp án chính xác:
+                          </span>
+                          <p class="hanzi font-semibold text-emerald-900">
+                            {{ ans.correctAnswer || ans.sampleAnswer }}
+                          </p>
+                        </div>
+                      }
+
+                      <!-- Nhận xét của giáo viên cho câu này -->
+                      @if (ans.teacherComment) {
+                        <div class="rounded-lg bg-blue-50/70 border border-blue-200/80 p-3 text-sm text-blue-950">
+                          <span class="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <i class="fa-solid fa-comment-dots fa-xs"></i> Nhận xét của giáo viên:
+                          </span>
+                          <p class="text-blue-900 font-medium">
+                            {{ ans.teacherComment }}
+                          </p>
+                        </div>
+                      }
+
+                    </div>
+                  }
+                </div>
+
+                <!-- CỘT PHỤ (4/12): Điểm số tổng hợp & Ghi chú từ GV -->
+                <div class="lg:col-span-5 xl:col-span-4 space-y-4">
+
+                  <!-- Card Tổng kết điểm -->
+                  @if (s.status === 'Graded') {
+                    <div class="rounded-2xl bg-base-100 border border-base-200 p-5 shadow-xs space-y-4">
+                      <h3 class="font-bold text-sm text-base-content/80 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-primary"></i>
+                        Tổng kết điểm số
+                      </h3>
+
+                      <!-- 3 Khối điểm số -->
+                      <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-xl bg-blue-50/60 border border-blue-200/60 p-2.5">
+                          <p class="text-[11px] font-bold text-blue-700 uppercase tracking-wider">Tự động</p>
+                          <p class="text-xl font-black text-blue-800 mt-1">{{ s.autoScore }}</p>
+                        </div>
+                        <div class="rounded-xl bg-amber-50/60 border border-amber-200/60 p-2.5">
+                          <p class="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Chấm tay</p>
+                          <p class="text-xl font-black text-amber-800 mt-1">{{ s.manualScore }}</p>
+                        </div>
+                        <div class="rounded-xl p-2.5 border"
+                          [class]="s.finalScore >= 8 ? 'bg-emerald-50/60 border-emerald-200/80 text-emerald-800' : s.finalScore >= 5 ? 'bg-amber-50/60 border-amber-200/80 text-amber-800' : 'bg-rose-50/60 border-rose-200/80 text-rose-800'">
+                          <p class="text-[11px] font-bold uppercase tracking-wider opacity-80">Tổng điểm</p>
+                          <p class="text-xl font-black mt-1">{{ s.finalScore }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Điểm theo từng mảng kiến thức -->
+                      @if (tagStats(s).length) {
+                        <div class="pt-3 border-t border-base-200 space-y-3">
+                          <p class="text-xs font-bold text-base-content/60 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group fa-xs"></i> Đánh giá theo kỹ năng
+                          </p>
+                          <div class="space-y-3">
+                            @for (t of tagStats(s); track t.tag) {
+                              <div class="space-y-1">
+                                <div class="flex items-center justify-between text-xs">
+                                  <span class="font-semibold text-base-content/80">{{ t.tag }}</span>
+                                  <span class="font-bold text-base-content/60">{{ t.got }}/{{ t.max }}đ ({{ t.pct }}%)</span>
+                                </div>
+                                <div class="w-full bg-base-200 rounded-full h-2 overflow-hidden">
+                                  <div class="h-2 rounded-full transition-all duration-300"
+                                    [class]="t.pct >= 80 ? 'bg-emerald-500' : t.pct >= 50 ? 'bg-amber-500' : 'bg-rose-500'"
+                                    [style.width.%]="t.pct"></div>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <!-- Card Ghi chú & Nhận xét của giáo viên -->
+                  @if (s.note?.sentAt) {
+                    <div class="rounded-2xl bg-base-100 border-2 border-primary/30 p-5 shadow-xs space-y-4">
+                      <div class="flex items-center gap-2 pb-2 border-b border-base-200">
+                        <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm">
+                          <i class="fa-solid fa-chalkboard-user"></i>
+                        </div>
+                        <div>
+                          <h3 class="font-bold text-sm text-primary uppercase tracking-wider">
+                            Ghi chú từ giáo viên
+                          </h3>
+                          <p class="text-[11px] text-base-content/50">
+                            {{ formatTime(s.note?.sentAt) }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Phần cần cải thiện (Weak tags) -->
+                      @if (s.note!.weakTags.length) {
+                        <div class="space-y-2">
+                          <span class="text-xs font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1">
+                            <i class="fa-solid fa-triangle-exclamation fa-xs"></i> Cần ôn tập & cải thiện:
+                          </span>
+                          <div class="flex flex-wrap gap-1.5">
+                            @for (t of s.note!.weakTags; track t) {
+                              <a [routerLink]="s.lessonId ? ['/learn', s.lessonId] : '/results'"
+                                [queryParams]="s.lessonId ? { part: weakTagToPart(t) } : null"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:border-rose-300 transition-colors"
+                                title="Bấm để mở thẳng bài học ôn lại">
+                                <i class="fa-solid fa-book-open fa-xs"></i>
+                                <span>{{ t }}</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square fa-xs ml-0.5 opacity-60"></i>
+                              </a>
+                            }
+                          </div>
+                          @if (s.lessonId) {
+                            <p class="text-[11px] text-base-content/50 italic">
+                              <i class="fa-solid fa-hand-pointer fa-xs mr-1"></i>Bấm vào kỹ năng để mở mục cần học lại trong bài.
+                            </p>
+                          }
+                        </div>
+                      }
+
+                      <!-- Nhận xét chung -->
+                      @if (s.note!.comment) {
+                        <div class="rounded-xl bg-primary/5 border border-primary/15 p-3.5 space-y-1">
+                          <span class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-quote-left fa-xs"></i> Lời nhận xét:
+                          </span>
+                          <p class="text-sm font-medium text-base-content/85 leading-relaxed">
+                            {{ s.note!.comment }}
+                          </p>
+                        </div>
+                      }
+
+                      <!-- Việc cần làm (Todos) -->
+                      @if (s.note!.todos.length) {
+                        <div class="space-y-2">
+                          <span class="text-xs font-bold text-base-content/60 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check fa-xs text-primary"></i> Việc cần làm:
+                          </span>
+                          <div class="space-y-1.5">
+                            @for (t of s.note!.todos; track t) {
+                              <div class="flex items-start gap-2 text-xs font-medium text-base-content/80 p-2 rounded-lg bg-base-200/60">
+                                <i class="fa-solid fa-circle-check text-primary text-sm mt-0.5 shrink-0"></i>
+                                <span class="leading-snug">{{ t }}</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Khu vực phản hồi -->
+                      <div class="pt-3 border-t border-base-200">
+                        @if (s.note!.reply) {
+                          <div class="rounded-xl bg-base-200/60 p-3 space-y-1">
+                            <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider flex items-center gap-1.5">
+                              <i class="fa-solid fa-reply fa-xs text-primary"></i> Phản hồi của bạn:
+                            </span>
+                            <p class="text-xs font-medium text-base-content/80 leading-relaxed">
+                              {{ s.note!.reply }}
+                            </p>
+                          </div>
+                        } @else {
+                          <div class="space-y-2">
+                            <label class="text-xs font-bold text-base-content/60 uppercase tracking-wider block">
+                              Gửi phản hồi cho giáo viên:
+                            </label>
+                            <div class="flex gap-2">
+                              <input [(ngModel)]="replies[s.id]"
+                                placeholder="Nhắn lại cho giáo viên..."
+                                class="input input-sm input-bordered flex-1 text-xs rounded-xl focus:outline-primary" />
+                              <button (click)="reply(s)"
+                                class="btn btn-primary btn-sm rounded-xl text-white gap-1 font-semibold">
+                                <i class="fa-solid fa-paper-plane fa-xs"></i> Gửi
+                              </button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                    </div>
+                  }
+
+                </div>
 
               </div>
-            }
-          </div>
+            </div>
+          }
+
         </div>
       }
 
-      <!-- Empty state -->
+      <!-- ===== TRẠNG THÁI TRỐNG ===== -->
       @if (!subs.length) {
-        <div class="card bg-base-100 border border-dashed border-base-300">
-          <div class="card-body py-20 items-center text-center gap-4">
-            <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center">
-              <i class="fa-solid fa-star text-3xl text-base-content/15"></i>
+        <div class="card bg-base-100 border border-dashed border-base-300 rounded-2xl">
+          <div class="card-body py-16 items-center text-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-base-200 text-base-content/25 flex items-center justify-center text-3xl">
+              <i class="fa-solid fa-graduation-cap"></i>
             </div>
-            <div>
-              <p class="font-semibold text-base-content/40">Chưa có kết quả nào</p>
-              <p class="text-sm text-base-content/30 mt-1">Hoàn thành bài tập để xem kết quả</p>
+            <div class="space-y-1">
+              <h3 class="font-bold text-lg text-base-content/70">Chưa có kết quả học tập nào</h3>
+              <p class="text-sm text-base-content/50 max-w-sm">
+                Hãy hoàn thành bài tập trong các bài học để xem chi tiết điểm số và nhận xét từ giáo viên tại đây.
+              </p>
             </div>
+            <a routerLink="/assignments" class="btn btn-primary btn-sm rounded-xl text-white gap-2 mt-2">
+              <i class="fa-solid fa-book-open fa-xs"></i> Đến danh sách bài tập
+            </a>
           </div>
         </div>
       }
@@ -335,8 +468,11 @@ const SCORE_COLOR = (score: number) => {
     </div>
   `,
   styles: [`
-    .hanzi { font-family: "Noto Sans SC", sans-serif; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .hanzi { font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .animate-fadeIn { animation: fadeIn 0.2s ease-out; }
   `]
 })
@@ -347,14 +483,30 @@ export class MyResultsComponent implements OnInit {
   private http = inject(HttpClient);
   private toast = inject(ToastService);
 
-  get gradedCount() { return this.subs.filter(s => s.status === 'Graded').length; }
+  get gradedCount() {
+    return this.subs.filter(s => s.status === 'Graded').length;
+  }
+
   get avgScore() {
     const graded = this.subs.filter(s => s.status === 'Graded');
     if (!graded.length) return 0;
     return +(graded.reduce((sum, s) => sum + s.finalScore, 0) / graded.length).toFixed(1);
   }
 
-  scoreColor(score: number) { return SCORE_COLOR(score); }
+  formatTime(iso?: string) {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit'
+      });
+    } catch {
+      return iso;
+    }
+  }
 
   /** Gộp điểm theo mảng kiến thức (KnowledgeTag) của từng câu hỏi. */
   tagStats(s: SubDetail) {
@@ -368,29 +520,43 @@ export class MyResultsComponent implements OnInit {
       byTag.set(tag, cur);
     }
     return [...byTag.entries()].map(([tag, v]) => ({
-      tag, got: +v.got.toFixed(1), max: +v.max.toFixed(1),
+      tag,
+      got: +v.got.toFixed(1),
+      max: +v.max.toFixed(1),
       pct: v.max > 0 ? Math.round((v.got / v.max) * 100) : 0
     }));
   }
 
-  /** Phần bài học cần học lại — suy từ tên mảng kiến thức (Khởi động/Từ mới/Ôn tập/Ngữ pháp/Hội thoại). */
+  /** Phần bài học cần học lại — suy từ tên mảng kiến thức. */
   weakTagToPart(tag: string): number {
     const t = tag.toLowerCase();
-    if (/ôn tập|gép|sắp xếp/.test(t)) return 3;
+    if (/ôn tập|ghép|sắp xếp/.test(t)) return 3;
     if (/ngữ pháp|trật tự/.test(t)) return 4;
     if (/hội thoại|đọc|phát âm|ghi âm/.test(t)) return 5;
     return 2; // Từ vựng / điền từ / mặc định
   }
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+  }
 
   load() {
     this.http.get<any>('http://localhost:5000/api/submissions/mine').subscribe({
-      next: (res) => { if (res.success) this.subs = res.data; }
+      next: (res) => {
+        if (res.success) {
+          this.subs = res.data;
+          // Tự động mở bài đầu tiên nếu có để học viên xem ngay kết quả
+          if (this.subs.length > 0 && !this.openId) {
+            this.openId = this.subs[0].id;
+          }
+        }
+      }
     });
   }
 
-  toggle(s: SubDetail) { this.openId = this.openId === s.id ? '' : s.id; }
+  toggle(s: SubDetail) {
+    this.openId = this.openId === s.id ? '' : s.id;
+  }
 
   reply(s: SubDetail) {
     const text = this.replies[s.id]?.trim();
@@ -398,7 +564,14 @@ export class MyResultsComponent implements OnInit {
     this.http.post<any>(`http://localhost:5000/api/submissions/${s.id}/reply`, JSON.stringify(text), {
       headers: { 'Content-Type': 'application/json' }
     }).subscribe({
-      next: (res) => { if (res.success) { this.toast.success('Đã gửi cho giáo viên.'); this.load(); } else this.toast.error(res.error!); },
+      next: (res) => {
+        if (res.success) {
+          this.toast.success('Đã gửi cho giáo viên.');
+          this.load();
+        } else {
+          this.toast.error(res.error!);
+        }
+      },
       error: (e) => this.toast.error(e.error?.error ?? 'Gửi thất bại')
     });
   }

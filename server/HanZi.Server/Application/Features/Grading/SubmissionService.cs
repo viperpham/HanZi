@@ -239,7 +239,8 @@ public class SubmissionService(
             }).ToList(),
             sub.GradingNote is { IsDeleted: false } n
                 ? new GradingNoteDto(n.WeakTags, n.Comment, n.Todos, n.SentAt, n.Reply)
-                : null);
+                : null,
+            assignment?.Title);
     }
 }
 

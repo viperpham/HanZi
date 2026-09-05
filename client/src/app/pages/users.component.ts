@@ -58,26 +58,26 @@ interface UserRow {
                   <td class="text-sm text-base-content/60">{{ u.phone || '—' }}</td>
                   <td>
                     @if (u.role === 'Admin') {
-                      <span class="badge badge-ghost gap-1">
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/60 border border-base-300">
                         <i class="fa-solid fa-shield-halved fa-xs"></i> Quản trị
                       </span>
                     } @else if (u.role === 'Teacher') {
-                      <span class="badge badge-warning gap-1">
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning/15 text-warning border border-warning/25">
                         <i class="fa-solid fa-chalkboard-user fa-xs"></i> Giáo viên
                       </span>
                     } @else {
-                      <span class="badge badge-info gap-1">
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-info/15 text-info border border-info/25">
                         <i class="fa-solid fa-graduation-cap fa-xs"></i> Học viên
                       </span>
                     }
                   </td>
                   <td>
                     @if (u.locked) {
-                      <span class="badge badge-error gap-1 badge-sm">
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-error/15 text-error border border-error/25">
                         <i class="fa-solid fa-lock fa-xs"></i> Đã khóa
                       </span>
                     } @else {
-                      <span class="badge badge-success gap-1 badge-sm">
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success/15 text-success border border-success/25">
                         <i class="fa-solid fa-circle-check fa-xs"></i> Hoạt động
                       </span>
                     }
