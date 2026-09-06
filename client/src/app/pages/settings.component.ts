@@ -2,6 +2,8 @@ import { Component, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ToastService } from '../toast.service';
 import { AuthService } from '../auth.service';
+import { PushService } from '../push.service';
+import { SignalrService } from '../signalr.service';
 
 @Component({
   selector: 'app-settings',
@@ -58,6 +60,46 @@ import { AuthService } from '../auth.service';
         </div>
       </div>
 
+      <!-- Thông báo đẩy (Web Push) -->
+      <div class="card bg-base-100 border border-base-200 shadow-sm">
+        <div class="card-body p-5 gap-3">
+          <h2 class="font-bold text-base-content flex items-center gap-2">
+            <i class="fa-solid fa-bell text-base-content/50"></i> Thông báo đẩy
+          </h2>
+          <p class="text-sm text-base-content/50">
+            Nhận thông báo ngay cả khi không mở trang (nhắc bài tập, kết quả chấm bài...).
+          </p>
+          @switch (push.status()) {
+            @case ('enabled') {
+              <div class="flex items-center gap-3 text-sm">
+                <span class="badge badge-success gap-1"><i class="fa-solid fa-check"></i> Đang bật</span>
+                <button (click)="togglePush(false)" class="btn btn-outline btn-sm">Tắt</button>
+              </div>
+            }
+            @case ('denied') {
+              <div class="alert alert-warning text-sm py-2.5">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Trình duyệt đang chặn thông báo. Mở cài đặt quyền của trang trong trình duyệt để cho phép.
+              </div>
+            }
+            @case ('unsupported') {
+              <div class="alert text-sm py-2.5">
+                <i class="fa-solid fa-circle-info"></i>
+                Trình duyệt / thiết bị này không hỗ trợ thông báo đẩy.
+              </div>
+            }
+            @default {
+              <div class="flex items-center gap-3 text-sm">
+                <span class="badge badge-ghost">Chưa bật</span>
+                <button (click)="togglePush(true)" class="btn btn-error btn-sm text-white gap-2">
+                  <i class="fa-regular fa-bell"></i> Bật thông báo
+                </button>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
       <!-- Tuỳ chọn ứng dụng (lưu tại máy này) -->
       <div class="card bg-base-100 border border-base-200 shadow-sm">
         <div class="card-body p-5 gap-3">
@@ -84,6 +126,8 @@ export class SettingsComponent {
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   auth = inject(AuthService);
+  push = inject(PushService);
+  private signalr = inject(SignalrService);
 
   systemRows = [
     { label: 'Ứng dụng', value: 'HanZi LMS — Web' },
@@ -107,6 +151,7 @@ export class SettingsComponent {
   }
 
   logout() {
+    this.signalr.stop();
     this.auth.logout();
     this.toast.success('Đã đăng xuất.');
     location.href = '/login';
@@ -122,5 +167,16 @@ export class SettingsComponent {
     if (v === undefined) return;
     localStorage.setItem('hz_setting_slowtts', v ? '1' : '0');
     this.toast.success('Đã lưu tuỳ chọn.');
+  }
+
+  async togglePush(on: boolean) {
+    if (on) {
+      await this.push.enable();
+      if (this.push.status() === 'enabled') this.toast.success('Đã bật thông báo đẩy.');
+      else if (this.push.status() === 'denied') this.toast.error('Bạn chưa cho phép thông báo trong trình duyệt.');
+    } else {
+      await this.push.disable();
+      this.toast.success('Đã tắt thông báo đẩy.');
+    }
   }
 }

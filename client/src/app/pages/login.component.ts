@@ -125,18 +125,6 @@ import { ToastService } from '../toast.service';
                     Giáo viên tạo tài khoản cho học viên
                   </span>
                 </div>
-
-                <div class="divider text-xs text-base-content/30 my-1">Tài khoản thử nghiệm</div>
-                <div class="flex gap-2 justify-center">
-                  <button type="button" (click)="fillDemo('admin@hanzi.vn', '123456')"
-                    class="btn btn-ghost btn-xs border border-base-300 rounded-lg">
-                    <i class="fa-solid fa-user-shield text-error mr-1"></i> Admin
-                  </button>
-                  <button type="button" (click)="fillDemo('b2@student.vn', '123456')"
-                    class="btn btn-ghost btn-xs border border-base-300 rounded-lg">
-                    <i class="fa-solid fa-user-graduate text-info mr-1"></i> Học viên B2
-                  </button>
-                </div>
               </form>
             </div>
           }
@@ -235,11 +223,6 @@ export class LoginComponent {
   private http = inject(HttpClient);
   private router = inject(Router);
   private toast = inject(ToastService);
-
-  fillDemo(email: string, pw: string) {
-    this.email = email;
-    this.password = pw;
-  }
 
   submit() {
     this.loading = true;

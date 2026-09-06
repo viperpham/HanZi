@@ -1,12 +1,13 @@
 # HanZi LMS — cả hệ thống trên 1 VPS/PC Ubuntu
 # Chạy: docker compose up -d --build
+# YÊU CẦU: file .env cạnh file này (copy từ .env.example) — thiếu là compose báo lỗi, KHÔNG chạy.
 services:
   postgres:
     image: postgres:16
     environment:
       POSTGRES_DB: hanzi
       POSTGRES_USER: hanzi
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hanzi_dev_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Thiếu POSTGRES_PASSWORD trong .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -19,8 +20,14 @@ services:
   server:
     build: ./server
     environment:
-      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=hanzi;Username=hanzi;Password=${POSTGRES_PASSWORD:-hanzi_dev_2026}"
-      Jwt__Secret: ${JWT_SECRET:-HANZI_CHANGE_ME_SECRET_KEY_MIN_32_CHARACTERS!!}
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=hanzi;Username=hanzi;Password=${POSTGRES_PASSWORD:?Thiếu POSTGRES_PASSWORD trong .env}"
+      Jwt__Secret: ${JWT_SECRET:?Thiếu JWT_SECRET trong .env}
+      Admin__Email: ${ADMIN_EMAIL:-}
+      Admin__Password: ${ADMIN_PASSWORD:-}
+      Push__PublicKey: ${VAPID_PUBLIC_KEY:-}
+      Push__PrivateKey: ${VAPID_PRIVATE_KEY:-}
+    volumes:
+      - hzdata:/app/App_Data   # lưu VAPID keys sinh tự động — mất là client phải đăng ký lại push
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,3 +43,4 @@ services:
 
 volumes:
   pgdata:
+  hzdata:

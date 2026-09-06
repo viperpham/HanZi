@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, AuditSaveChang
     public DbSet<GradingNote> GradingNotes => Set<GradingNote>();
     public DbSet<Progress> Progresses => Set<Progress>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
 

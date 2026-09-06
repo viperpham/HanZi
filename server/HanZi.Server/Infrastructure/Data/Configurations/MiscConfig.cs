@@ -40,6 +40,26 @@ public class NotificationConfig : IEntityTypeConfiguration<Notification>
     }
 }
 
+public class PushSubscriptionConfig : IEntityTypeConfiguration<PushSubscription>
+{
+    public void Configure(EntityTypeBuilder<PushSubscription> b)
+    {
+        b.ToTable("push_subscriptions");
+        b.Property(x => x.Endpoint).HasMaxLength(500).IsRequired();
+        b.Property(x => x.P256dh).HasMaxLength(200).IsRequired();
+        b.Property(x => x.Auth).HasMaxLength(200).IsRequired();
+
+        b.HasOne(x => x.User)
+         .WithMany()
+         .HasForeignKey(x => x.UserId)
+         .OnDelete(DeleteBehavior.Cascade);
+
+        // 1 endpoint chỉ thuộc 1 user — chặn đăng ký trùng/tráo
+        b.HasIndex(x => x.Endpoint).IsUnique().HasFilter("\"IsDeleted\" = false");
+        b.HasIndex(x => x.UserId);
+    }
+}
+
 public class ActivityLogConfig : IEntityTypeConfiguration<ActivityLog>
 {
     public void Configure(EntityTypeBuilder<ActivityLog> b)

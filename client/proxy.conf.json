@@ -1,4 +1,5 @@
 {
   "/api": { "target": "http://localhost:5000", "secure": false },
-  "/audio": { "target": "http://localhost:5000", "secure": false }
+  "/audio": { "target": "http://localhost:5000", "secure": false },
+  "/hub": { "target": "http://localhost:5000", "secure": false, "ws": true }
 }

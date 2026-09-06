@@ -14,13 +14,17 @@ using HanZi.Server.Domain.Common;
 using HanZi.Server;
 using HanZi.Server.Domain.Entities;
 using HanZi.Server.Domain.Enums;
+using HanZi.Server.Hubs;
 using HanZi.Server.Infrastructure.Auth;
 using HanZi.Server.Infrastructure.Data;
 using HanZi.Server.Infrastructure.Interceptors;
+using HanZi.Server.Infrastructure.Push;
 using HanZi.Server.Infrastructure.Repositories;
+using Lib.Net.Http.WebPush;
 using HanZi.Server.Infrastructure.Tts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 
@@ -47,6 +51,9 @@ try
     // Options
     var jwt = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
               ?? throw new InvalidOperationException("Thiếu cấu hình Jwt");
+    if (string.IsNullOrWhiteSpace(jwt.Secret))
+        throw new InvalidOperationException(
+            "Thiếu Jwt:Secret — đặt biến môi trường Jwt__Secret (file .env khi chạy Docker).");
     builder.Services.AddSingleton(jwt);
 
     // Auth — JWT tự viết
@@ -68,12 +75,35 @@ try
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Secret)),
                 ClockSkew = TimeSpan.FromSeconds(10)
             };
+            // SignalR WebSocket gửi token qua query string
+            o.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hub"))
+                        context.Token = accessToken;
+                    return Task.CompletedTask;
+                }
+            };
         });
     builder.Services.AddAuthorization();
 
+    // SignalR — realtime notification
+    builder.Services.AddSignalR();
+
     // Generic repository + Unit of Work
     builder.Services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
-    builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+    builder.Services.AddScoped<PushDispatcher>();
+    builder.Services.AddScoped<IUnitOfWork>(sp => new UnitOfWork(
+        sp.GetRequiredService<AppDbContext>(),
+        sp.GetRequiredService<PushDispatcher>()));
+
+    // Web Push (VAPID)
+    builder.Services.Configure<PushOptions>(builder.Configuration.GetSection(PushOptions.SectionName));
+    builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<PushOptions>>().Value);
+    builder.Services.AddSingleton<VapidKeyProvider>();
+    builder.Services.AddSingleton<PushServiceClient>();
 
     // Application services
     builder.Services.AddScoped<IAuthService, AuthService>();
@@ -119,15 +149,20 @@ try
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         if (!EF.IsDesignTime && !await db.Users.AnyAsync())
         {
+            var adminEmail = builder.Configuration["Admin:Email"] ?? "admin@hanzi.vn";
+            var adminPassword = builder.Configuration["Admin:Password"] ?? "123456";
             db.Users.Add(new User
             {
                 FullName = "Nguyễn Quản Trị",
-                Email = "admin@hanzi.vn",
-                PasswordHash = PasswordHasher.Hash("123456"),
+                Email = adminEmail,
+                PasswordHash = PasswordHasher.Hash(adminPassword),
                 Role = UserRole.Admin
             });
             await db.SaveChangesAsync();
-            Log.Information("Đã seed tài khoản admin mặc định (admin@hanzi.vn / 123456)");
+            if (adminPassword == "123456")
+                Log.Warning("Admin {Email} seeded với mật khẩu mặc định 123456 — HÃY ĐỔI NGAY trong app!", adminEmail);
+            else
+                Log.Information("Đã seed tài khoản admin mặc định ({Email})", adminEmail);
         }
     }
 
@@ -140,6 +175,7 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+    app.MapHub<HanZi.Server.Hubs.NotificationHub>("/hub/notifications");
 
     app.Run();
 }

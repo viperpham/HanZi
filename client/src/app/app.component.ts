@@ -4,6 +4,8 @@ import { HttpClient } from '@angular/common/http';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
+import { PushService } from './push.service';
+import { SignalrService } from './signalr.service';
 import { filter } from 'rxjs/operators';
 
 interface Noti { id: string; body: string; link?: string; createdAt: string; read: boolean; }
@@ -98,7 +100,7 @@ interface NavItem {
             </div>
 
             <!-- Notification -->
-            <div class="dropdown dropdown-end" (click)="$event.stopPropagation()">
+            <div class="relative" (click)="$event.stopPropagation()">
               <button (click)="toggleNoti()" tabindex="0"
                 class="btn btn-ghost btn-sm btn-circle indicator">
                 <i class="fa-solid fa-bell text-base text-base-content/60"></i>
@@ -109,8 +111,7 @@ interface NavItem {
                 }
               </button>
               @if (notiOpen()) {
-                <div tabindex="0"
-                  class="dropdown-content z-50 card card-compact w-80 bg-base-100 shadow-xl border border-base-200 mt-2">
+                <div class="absolute right-0 top-full mt-2 z-50 card card-compact w-80 bg-base-100 shadow-xl border border-base-200">
                   <div class="card-body p-0">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-base-200">
                       <span class="font-bold text-sm">Thông báo</span>
@@ -164,6 +165,8 @@ export class AppComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
   private http = inject(HttpClient);
   private toast = inject(ToastService);
+  private push = inject(PushService);
+  private signalr = inject(SignalrService);
   private router = inject(Router);
 
   notis = signal<Noti[]>([]);
@@ -233,6 +236,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadNotis();
+    this.push.init();
+    this.signalr.listen((n) => {
+      this.toast.info(n.body);
+      this.loadNotis();
+    });
+    this.signalr.start();
     this.poller = setInterval(() => this.loadNotis(), 60000);
     // Close noti dropdown on route change
     this.router.events.pipe(filter(e => e instanceof NavigationEnd))
@@ -258,6 +267,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   logout() {
+    this.signalr.stop();
     this.auth.logout();
     this.router.navigate(['/login']);
   }

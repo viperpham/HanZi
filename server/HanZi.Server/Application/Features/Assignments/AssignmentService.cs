@@ -99,11 +99,13 @@ public class AssignmentService(
         if (!addResult.Success) return Result<AssignmentDetailDto>.Fail(addResult.Error!);
 
         await activityLogs.AddAsync(new ActivityLog { ActorId = actorId, Entity = "Assignment", EntityId = a.Id.ToString(), Action = $"Giao bài tập {a.Title}" }, ct);
-        await uow.SaveChangesAsync(ct);
 
         // thông báo cho học viên đã duyệt của lớp — chỉ khi bài đã đến giờ giao
         if (a.PublishAt is null || a.PublishAt <= DateTime.UtcNow)
             await NotifyClassAsync(a, ct);
+
+        // Save SAU khi thêm thông báo — nếu không notification sẽ không được commit
+        await uow.SaveChangesAsync(ct);
 
         return await GetByIdAsync(a.Id, ct);
     }
