@@ -10,6 +10,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Create .env from secrets
+        working-directory: ${{ github.workspace }}
+        run: |
+          cat > .env <<'EOF'
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+          VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+          EOF
+          chmod 600 .env
+
       - name: Build & restart stack
         working-directory: ${{ github.workspace }}
         run: |
