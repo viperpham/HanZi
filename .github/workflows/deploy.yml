@@ -1,7 +1,8 @@
 name: Deploy HanZi LMS
 on:
   push:
-    branches: [main]
+    branches: [product]   # deploy chỉ khi push lên nhánh product
+  workflow_dispatch:       # cho phép chạy tay từ tab Actions trên GitHub
 
 jobs:
   deploy:
