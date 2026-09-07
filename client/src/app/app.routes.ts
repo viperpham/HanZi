@@ -21,37 +21,45 @@ import { MyClassComponent } from './pages/my-class.component';
 import { authGuard, roleGuard, homeForRole } from './auth.guard';
 import { AuthService } from './auth.service';
 import { SettingsComponent } from './pages/settings.component';
+import { ShellComponent } from './shell.component';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: () => {
-      const auth = inject(AuthService);
-      return auth.isLoggedIn() ? inject(Router).parseUrl(homeForRole(auth.user()?.role)) : '/login';
-    }
-  },
   { path: 'login', component: LoginComponent },
 
-  // ── Chỉ quản trị ──
-  { path: 'admin', component: AdminDashboardComponent, canActivate: [roleGuard(['Admin'])] },
-  { path: 'users', component: UsersComponent, canActivate: [roleGuard(['Admin'])] },
+  // ── Layout đã đăng nhập (sidebar + topbar) — mọi trang trong children ──
+  {
+    path: '',
+    component: ShellComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: () => homeForRole(inject(AuthService).user()?.role) },
 
-  // ── Giáo viên + Quản trị ──
-  { path: 'dashboard', component: TeacherDashboardComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'files', loadComponent: () => import('./pages/files.component').then(m => m.FilesComponent), canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'settings', component: SettingsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'curriculums', component: CurriculumsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'curriculums/:id/lessons', component: LessonsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'lessons/:id', component: LessonDetailComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'present/:id', component: PresentComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'classes', component: ClassesComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'assignments', component: AssignmentsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
-  { path: 'grading', component: GradingComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      // ── Chỉ quản trị ──
+      { path: 'admin', component: AdminDashboardComponent, canActivate: [roleGuard(['Admin'])] },
+      { path: 'users', component: UsersComponent, canActivate: [roleGuard(['Admin'])] },
 
-  // ── Học viên (giáo viên vẫn xem được — "mọi quyền của học viên") ──
-  { path: 'home', component: HomeComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
-  { path: 'my-class/:id', component: MyClassComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
-  { path: 'learn', component: StudentLearnComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
-  { path: 'learn/:id', component: StudentLessonComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
-  { path: 'my-assignments', component: MyAssignmentsComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
-  { path: 'do/:id', component: DoAssignmentComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
-  { path: 'results', component: MyResultsComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] }
+      // ── Giáo viên + Quản trị ──
+      { path: 'dashboard', component: TeacherDashboardComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'files', loadComponent: () => import('./pages/files.component').then(m => m.FilesComponent), canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'settings', component: SettingsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'curriculums', component: CurriculumsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'curriculums/:id/lessons', component: LessonsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'lessons/:id', component: LessonDetailComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'present/:id', component: PresentComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'classes', component: ClassesComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'assignments', component: AssignmentsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+      { path: 'grading', component: GradingComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+
+      // ── Học viên (giáo viên vẫn xem được — "mọi quyền của học viên") ──
+      { path: 'home', component: HomeComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
+      { path: 'my-class/:id', component: MyClassComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
+      { path: 'learn', component: StudentLearnComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
+      { path: 'learn/:id', component: StudentLessonComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
+      { path: 'my-assignments', component: MyAssignmentsComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
+      { path: 'do/:id', component: DoAssignmentComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] },
+      { path: 'results', component: MyResultsComponent, canActivate: [roleGuard(['Student', 'Teacher', 'Admin'])] }
+    ]
+  },
+
+  { path: '**', redirectTo: '' }
 ];

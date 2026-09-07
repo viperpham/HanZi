@@ -12,7 +12,7 @@ using HanZi.Server.Application.Features.Files.Dtos;
 public interface IFileService
 {
     Task<Result<FileAssetDto>> UploadAsync(Stream content, string fileName, long length, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<FileAssetDto>>> ListMineAsync(CancellationToken ct = default);
+    Task<Result<IReadOnlyList<FileAssetDto>>> ListMineAsync(string? search = null, string? kind = null, string? sort = null, CancellationToken ct = default);
     Task<Result<IReadOnlyList<FileAssetDto>>> ListForLessonAsync(Guid lessonId, CancellationToken ct = default);
     Task<Result<IReadOnlyList<FileAssetDto>>> ListForSubmissionAsync(Guid submissionId, CancellationToken ct = default);
     /// <summary>Gắn file (đã tải, còn sở hữu) vào bài học — giáo viên/quản trị.</summary>
@@ -108,13 +108,34 @@ public class FileService(
         return Result<FileAssetDto>.Ok(ToDto(asset));
     }
 
-    public async Task<Result<IReadOnlyList<FileAssetDto>>> ListMineAsync(CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<FileAssetDto>>> ListMineAsync(string? search = null, string? kind = null, string? sort = null, CancellationToken ct = default)
     {
-        var list = await repo.ListAsync(
-            new Specification<FileAsset>()
-                .Where(f => f.UploaderId == currentUser.UserId!.Value)
-                .OrderDesc(f => f.CreatedAt)
-                .TakeN(100), ct);
+        var spec = new Specification<FileAsset>()
+            .Where(f => f.UploaderId == currentUser.UserId!.Value);
+
+        // tìm theo tên (không phân biệt hoa thường)
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var q = search.Trim().ToLowerInvariant();
+            spec.Where(f => f.FileName.ToLower().Contains(q));
+        }
+
+        // lọc theo loại: Image | Document | Audio | Other
+        if (!string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FileKind>(kind, true, out var parsedKind))
+            spec.Where(f => f.Kind == parsedKind);
+
+        // sắp xếp: newest | oldest | name | name_desc | size | size_asc
+        var ordered = (sort ?? "").ToLowerInvariant() switch
+        {
+            "oldest" => spec.Order(f => f.CreatedAt),
+            "name" => spec.Order(f => f.FileName),
+            "name_desc" => spec.OrderDesc(f => f.FileName),
+            "size" => spec.OrderDesc(f => f.SizeBytes),
+            "size_asc" => spec.Order(f => f.SizeBytes),
+            _ => spec.OrderDesc(f => f.CreatedAt),
+        };
+
+        var list = await repo.ListAsync(ordered.TakeN(100), ct);
         return Result<IReadOnlyList<FileAssetDto>>.Ok(list.Select(ToDto).ToList());
     }
 
