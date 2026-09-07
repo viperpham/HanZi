@@ -29,11 +29,12 @@ public class AuthService(
 {
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted, ct);
+        var account = request.Account.Trim().ToLowerInvariant();
+        var user = await db.Users.FirstOrDefaultAsync(
+            u => (u.Email == account || u.Username == account) && !u.IsDeleted, ct);
 
         if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
-            return Result<AuthResponse>.Fail("Email hoặc mật khẩu không đúng.", "BAD_CREDENTIALS");
+            return Result<AuthResponse>.Fail("Tài khoản hoặc mật khẩu không đúng.", "BAD_CREDENTIALS");
         if (user.Locked)
             return Result<AuthResponse>.Fail("Tài khoản đã bị khóa. Liên hệ quản trị viên.", "LOCKED");
 
@@ -43,12 +44,12 @@ public class AuthService(
         db.ActivityLogs.Add(new ActivityLog { ActorId = user.Id, Action = "Đăng nhập hệ thống" });
         await uow.SaveChangesAsync(ct);
 
-        logger.LogInformation("User {Email} đăng nhập", user.Email);
+        logger.LogInformation("User {Account} đăng nhập", account);
         return Result<AuthResponse>.Ok(new AuthResponse(
             tokens.CreateAccessToken(user),
             user.RefreshToken,
             DateTime.UtcNow.AddMinutes(jwtSettings.AccessTokenMinutes),
-            new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString())));
+            new UserInfo(user.Id, user.Username, user.FullName, user.Email, user.Role.ToString())));
     }
 
     public async Task<Result<AuthResponse>> RefreshAsync(RefreshRequest request, CancellationToken ct = default)
@@ -68,7 +69,7 @@ public class AuthService(
             tokens.CreateAccessToken(user),
             user.RefreshToken,
             DateTime.UtcNow.AddMinutes(jwtSettings.AccessTokenMinutes),
-            new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString())));
+            new UserInfo(user.Id, user.Username, user.FullName, user.Email, user.Role.ToString())));
     }
 
     public async Task<Result> LogoutAsync(Guid userId, CancellationToken ct = default)

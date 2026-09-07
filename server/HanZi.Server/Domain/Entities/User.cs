@@ -5,6 +5,7 @@ namespace HanZi.Server.Domain.Entities;
 
 public class User : FullAuditedEntity
 {
+    public string Username { get; set; } = "";
     public string FullName { get; set; } = "";
     public string Email { get; set; } = "";
     public string? Phone { get; set; }

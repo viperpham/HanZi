@@ -1,6 +1,7 @@
 namespace HanZi.Server.Application.Features.Auth.Dtos;
 
-public record LoginRequest(string Email, string Password);
+/// <summary>Account chấp nhận username hoặc email.</summary>
+public record LoginRequest(string Account, string Password);
 
 public record RefreshRequest(string RefreshToken);
 
@@ -18,6 +19,7 @@ public record AuthResponse(
 
 public record UserInfo(
     Guid Id,
+    string Username,
     string FullName,
     string Email,
     string Role);

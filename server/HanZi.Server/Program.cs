@@ -5,6 +5,7 @@ using HanZi.Server.Application.Features.Assignments;
 using HanZi.Server.Application.Features.Classes;
 using HanZi.Server.Application.Features.Curriculums;
 using HanZi.Server.Application.Features.Dashboard;
+using HanZi.Server.Application.Features.Files;
 using HanZi.Server.Application.Features.Grading;
 using HanZi.Server.Application.Features.Lessons;
 using HanZi.Server.Application.Features.Notifications;
@@ -35,9 +36,17 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Tạo trước wwwroot/audio — nếu không, WebRootPath không được nhận diện và UseStaticFiles vô dụng
+    // Tạo trước wwwroot/audio (TTS) + wwwroot/uploads (file người dùng) — nếu không, WebRootPath không được nhận diện và UseStaticFiles vô dụng
     Directory.CreateDirectory(Path.Combine(
         builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"), "audio"));
+    // Thư mục lưu file người dùng (ngoài wwwroot — KHÔNG phục vụ tĩnh; xem phải qua /api/files/{id}/raw có kiểm quyền)
+    Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "UploadsData"));
+
+    // Giới hạn multipart (upload file) — nginx đã chặn 25MB trước đó
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+        o.MultipartBodyLengthLimit = 26 * 1024 * 1024);
+    // Body lớn hơn → Kestrel ngắt thẳng kết nối (ECONNRESET); nâng lên cho khớp giới hạn 25MB + phần dư multipart
+    builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 30 * 1024 * 1024);
 
     // Serilog
     builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
@@ -80,8 +89,11 @@ try
             {
                 OnMessageReceived = context =>
                 {
+                    // SignalR (query string) + file raw (thẻ <img> không gửi được header)
                     var accessToken = context.Request.Query["access_token"];
-                    if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hub"))
+                    if (!string.IsNullOrEmpty(accessToken) &&
+                        (context.HttpContext.Request.Path.StartsWithSegments("/hub") ||
+                         context.HttpContext.Request.Path.StartsWithSegments("/api/files")))
                         context.Token = accessToken;
                     return Task.CompletedTask;
                 }
@@ -115,6 +127,7 @@ try
     builder.Services.AddScoped<IGradingService, GradingService>();
     builder.Services.AddScoped<IProgressService, ProgressService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<IFileService, FileService>();
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<IDashboardService, DashboardService>();
 
@@ -126,7 +139,12 @@ try
     // Mapster: quét mapping profile
     builder.Services.RegisterMapsterConfiguration();
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(o =>
+        {
+            // dây chuyền an toàn: client cũ gửi index trắc nghiệm dạng số trong answerText vẫn đọc được
+            o.JsonSerializerOptions.NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString;
+        });
     builder.Services.AddEndpointsApiExplorer();
 
     // CORS cho Angular (dev chạy 4200)
@@ -155,6 +173,7 @@ try
             {
                 FullName = "Nguyễn Quản Trị",
                 Email = adminEmail,
+                Username = "admin",
                 PasswordHash = PasswordHasher.Hash(adminPassword),
                 Role = UserRole.Admin
             });

@@ -90,6 +90,27 @@ public class AttendanceConfig : IEntityTypeConfiguration<Attendance>
     }
 }
 
+public class FileAssetConfig : IEntityTypeConfiguration<FileAsset>
+{
+    public void Configure(EntityTypeBuilder<FileAsset> b)
+    {
+        b.ToTable("file_assets");
+        b.Property(x => x.FileName).HasMaxLength(260).IsRequired();
+        b.Property(x => x.StoredName).HasMaxLength(120).IsRequired();
+        b.Property(x => x.ContentType).HasMaxLength(120);
+
+        b.HasOne(x => x.Uploader)
+         .WithMany()
+         .HasForeignKey(x => x.UploaderId)
+         .OnDelete(DeleteBehavior.Restrict);
+
+        b.HasIndex(x => x.UploaderId);
+        b.HasIndex(x => x.LessonId);
+        b.HasIndex(x => x.SubmissionId);
+        b.HasIndex(x => x.Kind);
+    }
+}
+
 public class SentencePuzzleConfig : IEntityTypeConfiguration<SentencePuzzle>
 {
     public void Configure(EntityTypeBuilder<SentencePuzzle> b)

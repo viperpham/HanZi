@@ -17,6 +17,7 @@ interface SubDetail {
   id: string; studentName: string; status: string; submittedAt?: string;
   autoScore: number; manualScore: number; finalScore: number;
   answers: AnswerDetail[]; note?: { comment?: string; weakTags?: string[]; todos?: string[] };
+  attachments?: { id: string; fileName: string; url: string; kind: string }[];
 }
 
 const TYPE_LABEL: Record<string, string> = {
@@ -337,6 +338,37 @@ const TEMPLATES = [
           </button>
         </div>
 
+        <!-- Attachments: ảnh / tài liệu học viên nộp kèm -->
+        @if (d.attachments?.length) {
+          <div class="card bg-base-100 border border-base-200">
+            <div class="card-body p-4">
+              <p class="text-xs font-bold uppercase tracking-wide text-base-content/50 mb-2">
+                <i class="fa-solid fa-paperclip mr-1"></i>Tệp học viên nộp kèm ({{ d.attachments?.length ?? 0 }})
+              </p>
+              <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                @for (f of d.attachments; track f.id) {
+                  <a [href]="fileUrl(f)" target="_blank" rel="noopener"
+                     class="group relative block rounded-xl overflow-hidden border border-base-200 hover:border-error/60 transition-colors">
+                    @if (f.kind === 'Image') {
+                      <img [src]="fileUrl(f)" [alt]="f.fileName" class="h-32 w-full object-cover" />
+                    } @else {
+                      <div class="h-32 grid place-items-center bg-base-200/60">
+                        <span class="text-center px-2">
+                          <i class="fa-regular fa-file-lines text-2xl text-base-content/40"></i>
+                          <p class="text-xs font-semibold mt-1 truncate">{{ f.fileName }}</p>
+                        </span>
+                      </div>
+                    }
+                    <span class="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] px-2 py-1 truncate group-hover:bg-black/70">
+                      {{ f.fileName }}
+                    </span>
+                  </a>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Score Summary -->
         <div class="grid grid-cols-3 gap-4">
           <div class="card bg-info/5 border border-info/20">
@@ -613,6 +645,11 @@ export class GradingComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   get gradedCount() { return this.subs.filter(s => s.status === 'Graded').length; }
+
+  /** URL xem file kèm token — thẻ img/a không tự gửi Authorization header. */
+  fileUrl(f: { url: string }): string {
+    return `${f.url}?access_token=${localStorage.getItem('hz_token') ?? ''}`;
+  }
   get pendingCount() { return this.subs.filter(s => s.status === 'Submitted').length; }
   get selectedAssignmentTitle() {
     return this.assignments.find(a => a.id === this.assignmentId)?.title ?? '';

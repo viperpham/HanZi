@@ -30,6 +30,7 @@ services:
       Push__PrivateKey: ${VAPID_PRIVATE_KEY:-}
     volumes:
       - hzdata:/app/App_Data   # lưu VAPID keys sinh tự động — mất là client phải đăng ký lại push
+      - uploads:/app/UploadsData   # file học viên/GV tải lên (ngoài wwwroot — xem có kiểm quyền)
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,3 +47,4 @@ services:
 volumes:
   pgdata:
   hzdata:
+  uploads:

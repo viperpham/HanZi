@@ -1,20 +1,23 @@
 import { Injectable } from '@angular/core';
+import Swal from 'sweetalert2';
 
 export interface ModalField {
   key: string;
   label: string;
-  type?: 'text' | 'email' | 'password' | 'select' | 'textarea';
+  type?: 'text' | 'email' | 'password' | 'select' | 'textarea' | 'datetime-local' | 'number';
   placeholder?: string;
   value?: string;
   options?: [string, string][];
   hint?: string;
+  disabled?: boolean;
 }
 
 export interface ModalResult { [key: string]: string; }
 
 @Injectable({ providedIn: 'root' })
 export class ModalService {
-  /** Form modal cho Thêm/Sửa — trả về object giá trị, hoặc null nếu huỷ. */
+
+  /** Form modal cho Thêm/Sửa — responsive, cuộn mượt, không bị tràn màn hình mobile */
   form(opts: {
     title: string;
     fields: ModalField[];
@@ -22,108 +25,117 @@ export class ModalService {
   }): Promise<ModalResult | null> {
     return new Promise((resolve) => {
       const fieldsHtml = opts.fields.map((f) => {
-        const inputClass = 'input w-full text-sm';
-        const selectClass = 'select w-full text-sm';
-        const textareaClass = 'textarea w-full text-sm';
+        const inputBase = 'w-full px-3.5 py-2.5 rounded-xl text-sm border transition-all focus:outline-none';
+        const activeClass = 'bg-base-100 border-base-300 focus:border-error focus:ring-2 focus:ring-error/20 text-base-content';
+        const disabledClass = 'opacity-70 bg-base-200/80 border-dashed border-base-300 text-base-content/70 cursor-not-allowed select-none';
+        const inputClass = `${inputBase} ${f.disabled ? disabledClass : activeClass}`;
+        const disabledAttr = f.disabled ? 'disabled readonly' : '';
 
         const control = f.type === 'select'
-          ? `<select data-k="${f.key}" class="${selectClass}">${(f.options ?? []).map(([v, l], i) =>
+          ? `<select data-k="${f.key}" class="${inputClass}" ${disabledAttr}>${(f.options ?? []).map(([v, l], i) =>
               `<option value="${v}" ${v === f.value || (f.value === undefined && i === 0) ? 'selected' : ''}>${l}</option>`).join('')}</select>`
           : f.type === 'textarea'
             ? `<textarea data-k="${f.key}" rows="3" placeholder="${f.placeholder ?? ''}"
-                 class="${textareaClass}">${f.value ?? ''}</textarea>`
+                 class="${inputClass} resize-none" ${disabledAttr}>${f.value ?? ''}</textarea>`
             : `<input data-k="${f.key}" type="${f.type ?? 'text'}" value="${f.value ?? ''}"
-                 placeholder="${f.placeholder ?? ''}" class="${inputClass}"/>`;
+                 placeholder="${f.placeholder ?? ''}" class="${inputClass}" ${disabledAttr}/>`;
 
-        const hint = f.hint ? `<p class="text-xs text-base-content/40 mt-1">${f.hint}</p>` : '';
+        const hint = f.hint
+          ? `<p class="text-xs text-base-content/50 mt-1 flex items-center gap-1.5"><i class="fa-solid fa-circle-info text-[11px] text-base-content/40"></i> ${f.hint}</p>`
+          : '';
+
         return `
-          <div class="form-control w-full">
-            <label class="label py-1">
-              <span class="label-text font-semibold text-sm">${f.label}</span>
+          <div class="space-y-1">
+            <label class="block text-xs font-bold uppercase tracking-wider text-base-content/70">
+              ${f.label}
             </label>
             ${control}
             ${hint}
           </div>`;
       }).join('');
 
-      const root = this.build(`
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-extrabold text-base-content">${opts.title}</h3>
-          <button data-cancel class="btn btn-ghost btn-sm btn-square">
-            <i class="fa-solid fa-xmark"></i>
+      const root = this.buildModal(`
+        <div class="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-base-200 bg-base-100 shrink-0">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-error/10 text-error flex items-center justify-center text-sm font-bold">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </span>
+            <h3 class="text-lg font-extrabold text-base-content">${opts.title}</h3>
+          </div>
+          <button data-cancel class="btn btn-ghost btn-sm btn-circle text-base-content/40 hover:text-base-content">
+            <i class="fa-solid fa-xmark text-base"></i>
           </button>
         </div>
-        <form class="space-y-1">${fieldsHtml}</form>
-        <div class="modal-action mt-5">
-          <button data-cancel class="btn btn-ghost">Huỷ</button>
-          <button data-ok class="btn btn-error text-white">
-            <i class="fa-solid fa-check mr-1"></i>${opts.confirmText ?? 'Lưu'}
+
+        <form class="px-5 sm:px-6 py-4 overflow-y-auto flex-1 space-y-3.5 max-h-[60vh] sm:max-h-[65vh]">
+          ${fieldsHtml}
+        </form>
+
+        <div class="px-5 sm:px-6 py-3.5 border-t border-base-200 bg-base-200/40 flex items-center justify-end gap-2.5 shrink-0">
+          <button data-cancel type="button" class="btn btn-ghost btn-sm rounded-xl px-4 text-base-content/70 font-semibold">
+            Huỷ bỏ
           </button>
-        </div>`);
+          <button data-ok type="button" class="btn btn-error btn-sm text-white rounded-xl px-5 font-bold shadow-sm shadow-error/25 hover:shadow">
+            <i class="fa-solid fa-check mr-1"></i> ${opts.confirmText ?? 'Lưu thay đổi'}
+          </button>
+        </div>
+      `);
 
       const done = (v: ModalResult | null) => {
         root.classList.add('opacity-0');
-        setTimeout(() => { root.remove(); document.removeEventListener('keydown', esc); }, 200);
+        setTimeout(() => { root.remove(); document.removeEventListener('keydown', esc); }, 150);
         resolve(v);
       };
+
       const submit = () => {
         const values: ModalResult = {};
         root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('[data-k]')
           .forEach((i) => (values[i.dataset['k']!] = i.value.trim()));
         done(values);
       };
+
       root.querySelector('[data-ok]')!.addEventListener('click', submit);
       root.querySelector('form')!.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
       root.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => done(null)));
       root.addEventListener('click', (e) => { if (e.target === root) done(null); });
+
       const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') done(null); };
       document.addEventListener('keydown', esc);
     });
   }
 
-  /** Modal xác nhận (xoá…) — trả true nếu đồng ý. */
-  confirm(message: string, okText = 'Đồng ý', danger = false): Promise<boolean> {
-    return new Promise((resolve) => {
-      const iconHtml = danger
-        ? '<div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-3"><i class="fa-solid fa-triangle-exclamation text-error text-xl"></i></div>'
-        : '<div class="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center mb-3"><i class="fa-solid fa-circle-question text-warning text-xl"></i></div>';
-
-      const root = this.build(`
-        <div class="text-center">
-          ${iconHtml}
-          <h3 class="text-lg font-extrabold text-base-content mb-2">Xác nhận</h3>
-          <p class="text-sm text-base-content/60">${message}</p>
-        </div>
-        <div class="modal-action mt-5 justify-center gap-3">
-          <button data-cancel class="btn btn-ghost min-w-[80px]">Huỷ</button>
-          <button data-ok class="btn ${danger ? 'btn-error' : 'btn-neutral'} text-white min-w-[80px]">
-            ${danger ? '<i class="fa-solid fa-trash mr-1"></i>' : '<i class="fa-solid fa-check mr-1"></i>'}${okText}
-          </button>
-        </div>`);
-
-      const done = (v: boolean) => {
-        root.classList.add('opacity-0');
-        setTimeout(() => { root.remove(); document.removeEventListener('keydown', esc); }, 200);
-        resolve(v);
-      };
-      root.querySelector('[data-ok]')!.addEventListener('click', () => done(true));
-      root.querySelector('[data-cancel]')!.addEventListener('click', () => done(false));
-      root.addEventListener('click', (e) => { if (e.target === root) done(false); });
-      const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') done(false); };
-      document.addEventListener('keydown', esc);
+  /** Modal xác nhận bằng SweetAlert2 — hoạt họa mượt mà, chuẩn thư viện chuyên nghiệp */
+  async confirm(message: string, okText = 'Đồng ý', danger = false): Promise<boolean> {
+    const res = await Swal.fire({
+      title: danger ? 'Xác nhận xóa' : 'Xác nhận thao tác',
+      html: message,
+      icon: danger ? 'warning' : 'question',
+      showCancelButton: true,
+      confirmButtonColor: danger ? '#dc2626' : '#2563eb',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: danger ? `<i class="fa-solid fa-trash mr-1.5"></i> ${okText}` : `<i class="fa-solid fa-check mr-1.5"></i> ${okText}`,
+      cancelButtonText: 'Huỷ bỏ',
+      reverseButtons: true,
+      focusCancel: danger,
+      customClass: {
+        popup: 'rounded-2xl shadow-2xl border border-base-200 text-sm font-sans',
+        confirmButton: danger ? 'btn btn-error text-white font-bold rounded-xl px-5' : 'btn btn-primary text-white font-bold rounded-xl px-5',
+        cancelButton: 'btn btn-ghost rounded-xl px-4'
+      }
     });
+    return res.isConfirmed;
   }
 
-  private build(inner: string): HTMLElement {
+  private buildModal(inner: string): HTMLElement {
     const root = document.createElement('div');
-    // DaisyUI modal-style backdrop
-    root.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4 transition-opacity duration-200';
-    root.style.cssText = 'background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);';
+    root.className = 'fixed inset-0 z-[999] flex items-center justify-center p-3 sm:p-4 transition-opacity duration-150';
+    root.style.cssText = 'background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);';
     root.innerHTML = `
-      <div class="card bg-base-100 w-full max-w-md shadow-2xl border border-base-200">
-        <div class="card-body p-6">${inner}</div>
+      <div class="bg-base-100 w-full max-w-lg shadow-2xl border border-base-200 rounded-2xl flex flex-col overflow-hidden max-h-[88vh]">
+        ${inner}
       </div>`;
     document.body.appendChild(root);
     return root;
   }
 }
+
