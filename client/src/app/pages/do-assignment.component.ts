@@ -1,9 +1,11 @@
-import { Component, OnDestroy, inject, OnInit } from '@angular/core';
+import { Component, OnDestroy, inject, OnInit, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../toast.service';
+import { AssetPickerService } from '../asset-picker.service';
+import { FileAsset } from '../file.service';
 
 interface Question { id: string; orderNo: number; type: string; prompt: string; points: number; options?: string[]; sampleAnswer?: string; }
 interface AssignmentDetail { id: string; title: string; description?: string; dueAt: string; durationMin: number; questions: Question[]; }
@@ -34,7 +36,7 @@ interface AssignmentDetail { id: string; title: string; description?: string; du
                 <div class="space-y-2">
                   @for (opt of q.options; track $index; let oi = $index) {
                     <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-4 py-2.5 hover:bg-slate-50">
-                      <input type="radio" [name]="q.id" [value]="oi" [(ngModel)]="answers[q.id]" class="h-4 w-4 accent-red-600"/>
+                      <input type="radio" [name]="q.id" [value]="oi + ''" [(ngModel)]="answers[q.id]" class="h-4 w-4 accent-red-600"/>
                       <span class="hanzi font-semibold">{{ opt }}</span>
                     </label>
                   }
@@ -93,6 +95,27 @@ interface AssignmentDetail { id: string; title: string; description?: string; du
               <span class="flex items-center gap-1"><span class="h-2 w-2 rounded bg-base-200 inline-block"></span>Chưa làm</span>
             </div>
           </div>
+          <div class="card bg-base-100 border border-base-200 p-4 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wide text-base-content/50 mb-2">
+              <i class="fa-solid fa-paperclip mr-1"></i>Tệp đính kèm
+            </p>
+            @if (attachments().length) {
+              <div class="flex flex-wrap gap-1.5 mb-2">
+                @for (f of attachments(); track f.id) {
+                  <span class="badge badge-sm gap-1 border-base-300"
+                    [class.badge-error]="f.kind === 'Image'">
+                    <i class="fa-regular" [class.fa-image]="f.kind === 'Image'" [class.fa-file-lines]="f.kind !== 'Image'"></i>
+                    {{ f.fileName }}
+                    <button (click)="removeAttachment(f)" class="ml-1 opacity-60 hover:opacity-100">✕</button>
+                  </span>
+                }
+              </div>
+            }
+            <button (click)="pickAttachments()" class="btn btn-outline btn-sm w-full gap-2">
+              <i class="fa-solid fa-cloud-arrow-up"></i> {{ attachments().length ? 'Thêm tệp' : 'Tải ảnh / tài liệu' }}
+            </button>
+            <p class="mt-1.5 text-[10px] text-base-content/40 text-center">Ảnh ≤ 10MB · Tài liệu ≤ 25MB</p>
+          </div>
           <button (click)="submit()" [disabled]="submitting"
             class="btn btn-error text-white w-full gap-2 disabled:opacity-50">
             @if (submitting) {
@@ -111,6 +134,7 @@ interface AssignmentDetail { id: string; title: string; description?: string; du
 export class DoAssignmentComponent implements OnInit, OnDestroy {
   a: AssignmentDetail | null = null;
   answers: Record<string, string> = {};
+  attachments = signal<FileAsset[]>([]);
   submitting = false;
   assignmentId = '';
   timeLeft: number | null = null;
@@ -122,6 +146,25 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toast = inject(ToastService);
+  private picker = inject(AssetPickerService);
+
+  /** Mở modal Thư viện tài liệu để chọn/tải tệp đính kèm bài nộp. */
+  async pickAttachments() {
+    const picked = await this.picker.open({
+      title: 'Đính kèm vào bài nộp',
+      accept: 'any',
+      multiple: true,
+    });
+    if (!picked) return;
+    this.attachments.update((cur) => {
+      const seen = new Set(cur.map((x) => x.id));
+      return [...cur, ...picked.filter((p) => !seen.has(p.id))];
+    });
+  }
+
+  removeAttachment(f: FileAsset) {
+    this.attachments.update((xs) => xs.filter((x) => x.id !== f.id));
+  }
 
   ngOnInit() {
     this.assignmentId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -129,13 +172,25 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
       next: (res) => {
         if (!res.success) return;
         this.a = res.data;
-        this.timeLeft = (res.data.durationMin ?? 15) * 60;
+        this.initTimer(res.data.durationMin ?? 15);
         this.clockTimer = setInterval(() => this.tick(), 1000);
         this.restoreDraft();
       }
     });
     // tự lưu nháp định kỳ — mất mạng không mất bài
     this.draftTimer = setInterval(() => this.saveDraft(), 30000);
+  }
+
+  /** Đồng hồ tính từ thời điểm MỞ BÀI lần đầu (lưu tại máy) — refresh không đếm lại. */
+  private initTimer(durationMin: number) {
+    const key = `hz_timer_${this.assignmentId}`;
+    let started = Number(localStorage.getItem(key));
+    if (!started || Number.isNaN(started)) {
+      started = Date.now();
+      localStorage.setItem(key, String(started));
+    }
+    const elapsed = Math.floor((Date.now() - started) / 1000);
+    this.timeLeft = Math.max(0, durationMin * 60 - elapsed);
   }
 
   ngOnDestroy() {
@@ -183,7 +238,7 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
   private saveDraft() {
     if (!this.a || this.submitting || this.answered() === 0) return;
     this.http.post<any>(`/api/submissions/assignments/${this.assignmentId}/draft`, {
-      answers: this.a.questions.map((q) => ({ questionId: q.id, answerText: this.answers[q.id] ?? null }))
+      answers: this.a.questions.map((q) => ({ questionId: q.id, answerText: this.asStr(this.answers[q.id]) }))
     }).subscribe({
       next: (res) => { if (res.success) this.draftSavedAt = new Date(); }
     });
@@ -202,16 +257,25 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
     return 'Nhập câu trả lời…';
   }
 
-  answered() { return Object.values(this.answers).filter((v) => v && v.trim()).length; }
+  answered() {
+    return Object.values(this.answers).filter((v) => v !== undefined && v !== null && String(v).trim() !== '').length;
+  }
 
   isAnswered(q: Question): boolean {
     const v = this.answers[q.id];
-    return !!v && !!v.trim();
+    return v !== undefined && v !== null && String(v).trim() !== '';
   }
 
   /** Nhảy tới câu hỏi tương ứng. */
   jumpTo(i: number) {
     document.getElementById('q-' + i)?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+
+  /** Chuẩn hoá câu trả lời về string (trắc nghiệm là index) — server cần JSON string. */
+  asStr(v: unknown): string | null {
+    if (v === undefined || v === null) return null;
+    const s = String(v).trim();
+    return s === '' ? null : s;
   }
 
   submit() {
@@ -220,10 +284,12 @@ export class DoAssignmentComponent implements OnInit, OnDestroy {
     if (missing > 0 && !confirm(`Bạn còn ${missing} câu chưa làm. Nộp bài luôn?`)) return;
     this.submitting = true;
     this.http.post<any>(`/api/submissions/assignments/${this.assignmentId}/submit`, {
-      answers: this.a.questions.map((q) => ({ questionId: q.id, answerText: this.answers[q.id] ?? null }))
+      answers: this.a.questions.map((q) => ({ questionId: q.id, answerText: this.asStr(this.answers[q.id]) })),
+      attachmentIds: this.attachments().map((f) => f.id),
     }).subscribe({
       next: (res) => {
         if (res.success) {
+          localStorage.removeItem(`hz_timer_${this.assignmentId}`);
           this.toast.success(`Đã nộp bài! Điểm tự động: ${res.data.autoScore}/10`);
           this.router.navigate(['/results']);
         } else { this.toast.error(res.error!); this.submitting = false; }

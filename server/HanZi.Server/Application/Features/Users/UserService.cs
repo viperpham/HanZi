@@ -38,12 +38,21 @@ public class UserService(IRepository<User> repo, ITokenService tokens, JwtSettin
         if (!Enum.TryParse<UserRole>(req.Role, true, out var role))
             return Result<UserListDto>.Fail("Vai trò không hợp lệ (Student | Teacher | Admin).");
 
+        var username = req.Username.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(username) || username.Length < 3 || username.Length > 50
+            || !System.Text.RegularExpressions.Regex.IsMatch(username, @"^[a-zA-Z0-9._]+$"))
+            return Result<UserListDto>.Fail("Tên đăng nhập phải từ 3–50 ký tự, chỉ chứa chữ, số, dấu chấm hoặc gạch dưới.");
+
+        if (await repo.AnyAsync(new Specification<User>().Where(u => u.Username == username), ct))
+            return Result<UserListDto>.Fail("Tên đăng nhập này đã được sử dụng.", "DUPLICATE");
+
         var email = req.Email.Trim().ToLowerInvariant();
         if (await repo.AnyAsync(new Specification<User>().Where(u => u.Email == email), ct))
             return Result<UserListDto>.Fail("Email này đã có tài khoản.", "DUPLICATE");
 
         var user = new User
         {
+            Username = username,
             FullName = req.FullName,
             Email = email,
             PasswordHash = PasswordHasher.Hash(req.Password),
@@ -59,6 +68,17 @@ public class UserService(IRepository<User> repo, ITokenService tokens, JwtSettin
         var user = await repo.GetByIdAsync(id, ct);
         if (user is null) return Result<UserListDto>.Fail("Không tìm thấy người dùng.", "NOT_FOUND");
 
+        if (req.Username is not null)
+        {
+            var username = req.Username.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(username) || username.Length < 3 || username.Length > 50
+                || !System.Text.RegularExpressions.Regex.IsMatch(username, @"^[a-zA-Z0-9._]+$"))
+                return Result<UserListDto>.Fail("Tên đăng nhập phải từ 3–50 ký tự, chỉ chứa chữ, số, dấu chấm hoặc gạch dưới.");
+            var duplicatedUsername = await repo.AnyAsync(
+                new Specification<User>().Where(u => u.Username == username && u.Id != id), ct);
+            if (duplicatedUsername) return Result<UserListDto>.Fail("Tên đăng nhập này đã có người dùng khác sử dụng.", "DUPLICATE");
+            user.Username = username;
+        }
         if (req.FullName is not null) user.FullName = req.FullName;
 
         if (req.Email is not null)
@@ -112,6 +132,6 @@ public class UserService(IRepository<User> repo, ITokenService tokens, JwtSettin
             tokens.CreateAccessToken(user),
             user.RefreshToken,
             DateTime.UtcNow.AddMinutes(jwtSettings.AccessTokenMinutes),
-            new UserInfo(user.Id, user.FullName, user.Email, user.Role.ToString())));
+            new UserInfo(user.Id, user.Username, user.FullName, user.Email, user.Role.ToString())));
     }
 }

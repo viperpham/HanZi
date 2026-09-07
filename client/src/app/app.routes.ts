@@ -36,6 +36,7 @@ export const routes: Routes = [
 
   // ── Giáo viên + Quản trị ──
   { path: 'dashboard', component: TeacherDashboardComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
+  { path: 'files', loadComponent: () => import('./pages/files.component').then(m => m.FilesComponent), canActivate: [roleGuard(['Teacher', 'Admin'])] },
   { path: 'settings', component: SettingsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
   { path: 'curriculums', component: CurriculumsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },
   { path: 'curriculums/:id/lessons', component: LessonsComponent, canActivate: [roleGuard(['Teacher', 'Admin'])] },

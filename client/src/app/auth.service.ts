@@ -18,8 +18,8 @@ export class AuthService {
 
   isLoggedIn() { return !!localStorage.getItem('hz_token'); }
 
-  login(email: string, password: string) {
-    return this.http.post<any>(`${this.base}/login`, { email, password }).pipe(
+  login(account: string, password: string) {
+    return this.http.post<any>(`${this.base}/login`, { account, password }).pipe(
       tap((res) => {
         if (res.success) {
           localStorage.setItem('hz_token', res.data.accessToken);

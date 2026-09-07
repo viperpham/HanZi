@@ -9,12 +9,14 @@ public class UserConfig : IEntityTypeConfiguration<User>
     public void Configure(EntityTypeBuilder<User> b)
     {
         b.ToTable("users");
+        b.Property(x => x.Username).HasMaxLength(50).IsRequired();
         b.Property(x => x.FullName).HasMaxLength(120).IsRequired();
         b.Property(x => x.Email).HasMaxLength(200).IsRequired();
         b.Property(x => x.PasswordHash).HasMaxLength(200).IsRequired();
 
         // unique chỉ tính bản ghi còn hoạt động — cho phép email tái sử dụng sau khi xoá mềm
         b.HasIndex(x => x.Email).IsUnique().HasFilter("\"IsDeleted\" = false");
+        b.HasIndex(x => x.Username).IsUnique().HasFilter("\"IsDeleted\" = false");
         b.HasIndex(x => x.Role);
     }
 }

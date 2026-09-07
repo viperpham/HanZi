@@ -1,8 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ToastService } from '../toast.service';
 import { ModalService } from '../modal.service';
+import { AssetPickerService } from '../asset-picker.service';
+import { FileService, FileAsset } from '../file.service';
 import { pinyin } from 'pinyin-pro';
 
 interface Vocab { id: string; orderNo: number; hanzi: string; pinyin: string; hanviet?: string; partOfSpeech?: string; meaningVi: string; emoji?: string; inWarmup: boolean; }
@@ -14,7 +17,7 @@ interface LessonFull { id: string; curriculumId: string; orderNo: number; titleV
 @Component({
   selector: 'app-lesson-detail',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, DatePipe],
   template: `
     @if (lesson; as l) {
       <div class="space-y-6">
@@ -38,6 +41,75 @@ interface LessonFull { id: string; curriculumId: string; orderNo: number; titleV
             <a routerLink="/present/{{ l.id }}" class="btn btn-neutral btn-sm gap-2">
               <i class="fa-solid fa-desktop"></i> Trình chiếu
             </a>
+          </div>
+        </div>
+
+        <!-- Tài liệu bài học -->
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl overflow-hidden">
+          <div class="card-body p-5 sm:p-6">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-200 pb-3.5">
+              <h2 class="font-extrabold text-base sm:text-lg text-base-content flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm shadow-xs border border-primary/20">
+                  <i class="fa-solid fa-folder-open"></i>
+                </span>
+                Tài liệu & Tệp bài học
+                <span class="badge badge-primary badge-outline text-xs font-bold">{{ materials().length }}</span>
+              </h2>
+              <button (click)="addMaterials()" class="btn btn-primary btn-sm rounded-xl text-white shadow-sm gap-2 px-4 font-semibold">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Thêm tệp tài liệu
+              </button>
+            </div>
+
+            @if (materials().length) {
+              <div class="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                @for (f of materials(); track f.id) {
+                  <div class="card bg-base-100 border border-base-200 hover:border-primary/40 hover:shadow-md transition-all rounded-2xl p-3.5 group relative flex flex-col justify-between">
+                    <div class="flex items-start gap-3">
+                      @if (f.kind === 'Image') {
+                        <img [src]="FileService.viewUrl(f)" [alt]="f.fileName" class="h-12 w-12 rounded-xl object-cover border border-base-200 shrink-0" />
+                      } @else {
+                        <div class="h-12 w-12 rounded-xl bg-base-200/80 flex items-center justify-center shrink-0">
+                          <i [class]="'fa-solid ' + FileService.fileMeta(f).icon + ' text-xl ' + FileService.fileMeta(f).color"></i>
+                        </div>
+                      }
+                      <div class="min-w-0 flex-1">
+                        <p class="text-xs sm:text-sm font-bold text-base-content truncate group-hover:text-primary transition-colors" [title]="f.fileName">
+                          {{ f.fileName }}
+                        </p>
+                        <div class="flex items-center gap-2 mt-1 text-[11px] text-base-content/40">
+                          <span class="badge badge-xs badge-ghost font-mono uppercase">{{ FileService.fileMeta(f).label }}</span>
+                          <span>{{ FileService.humanSize(f.sizeBytes) }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2.5 mt-2.5 border-t border-base-200/60 text-xs">
+                      <span class="text-[11px] text-base-content/40">{{ f.createdAt | date:'dd/MM/yyyy' }}</span>
+                      <div class="flex items-center gap-1">
+                        <a [href]="FileService.viewUrl(f)" target="_blank" rel="noopener"
+                          class="btn btn-ghost btn-xs btn-square text-base-content/60 hover:text-primary"
+                          title="Xem / Tải về">
+                          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                        <button (click)="removeMaterial(f)"
+                          class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-error hover:bg-error/10"
+                          title="Gỡ khỏi bài học">
+                          <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="py-8 text-center max-w-sm mx-auto">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-base-200/60 text-base-content/30 flex items-center justify-center text-xl mb-2">
+                  <i class="fa-regular fa-folder-open"></i>
+                </div>
+                <p class="text-sm font-semibold text-base-content/60">Chưa có tài liệu đính kèm nào</p>
+                <p class="text-xs text-base-content/40 mt-0.5">Bấm "Thêm tệp tài liệu" để tải lên file mới hoặc chọn từ kho lưu trữ của bạn.</p>
+              </div>
+            }
           </div>
         </div>
 
@@ -296,10 +368,14 @@ interface LessonFull { id: string; curriculumId: string; orderNo: number; titleV
 export class LessonDetailComponent implements OnInit {
   lesson: LessonFull | null = null;
   lessonId = '';
+  materials = signal<FileAsset[]>([]);
+  FileService = FileService;
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
   private modal = inject(ModalService);
+  private picker = inject(AssetPickerService);
+  private files = inject(FileService);
 
   ngOnInit() {
     this.lessonId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -310,6 +386,30 @@ export class LessonDetailComponent implements OnInit {
     this.http.get<any>(`/api/lessons/${this.lessonId}`).subscribe({
       next: (res) => { if (res.success) this.lesson = res.data; }
     });
+    this.files.forLesson(this.lessonId).then((xs) => this.materials.set(xs));
+  }
+
+  /** Chọn/tải tệp (từ thư viện hoặc mới) rồi gắn vào bài học. */
+  async addMaterials() {
+    const picked = await this.picker.open({ title: 'Tài liệu bài học', accept: 'any', multiple: true });
+    if (!picked?.length) return;
+    const n = await this.files.attachLesson(this.lessonId, picked.map((f) => f.id));
+    if (n > 0) {
+      this.toast.success(`Đã thêm ${n} tệp vào bài học.`);
+      this.files.forLesson(this.lessonId).then((xs) => this.materials.set(xs));
+    } else if (n === 0) {
+      this.toast.info('Các tệp đã chọn không gắn được (có thể đã nằm trong bài học khác).');
+    } else {
+      this.toast.error('Không gắn được tệp.');
+    }
+  }
+
+  async removeMaterial(f: FileAsset) {
+    if (!(await this.modal.confirm(`Gỡ <b>${f.fileName}</b> khỏi bài học? (Tệp vẫn còn trong thư viện của bạn)`, 'Gỡ'))) return;
+    if (await this.files.detachLesson(f.id)) {
+      this.materials.update((xs) => xs.filter((x) => x.id !== f.id));
+      this.toast.success('Đã gỡ khỏi bài học.');
+    } else this.toast.error('Không gỡ được tệp.');
   }
 
   drillOptions(d: any): string[] {

@@ -1,6 +1,7 @@
 using HanZi.Server.Domain.Common;
 using HanZi.Server.Domain.Entities;
 using HanZi.Server.Domain.Enums;
+using HanZi.Server.Application.Features.Files;
 using HanZi.Server.Infrastructure.Repositories;
 using HanZi.Server.Infrastructure.Interceptors;
 using HanZi.Server.Infrastructure.Specifications;
@@ -37,6 +38,7 @@ public class SubmissionService(
     IRepository<Notification> notifications,
     IRepository<User> users,
     IRepository<ActivityLog> activityLogs,
+    IRepository<FileAsset> fileAssets,
     IUnitOfWork uow) : ISubmissionService
 {
     public async Task<Result<SubmissionDetailDto>> SubmitAsync(Guid assignmentId, Guid studentId, SubmitRequest req, CancellationToken ct = default)
@@ -122,6 +124,18 @@ public class SubmissionService(
             }, ct);
         }
         await activityLogs.AddAsync(new ActivityLog { ActorId = studentId, Entity = "Submission", EntityId = sub.Id.ToString(), Action = $"Nộp bài tập {a.Title}" }, ct);
+
+        // đính tệp (ảnh/tài liệu) do học viên tải trước đó
+        if (req.AttachmentIds is { Count: > 0 })
+        {
+            var files = await fileAssets.ListAsync(
+                new Specification<FileAsset>()
+                    .Where(f => req.AttachmentIds.Contains(f.Id)
+                        && f.UploaderId == studentId
+                        && (f.SubmissionId == null || f.SubmissionId == sub.Id))
+                    .Track(), ct);
+            foreach (var f in files) f.SubmissionId = sub.Id;
+        }
 
         await uow.SaveChangesAsync(ct);
         return await GetForStudentAsync(sub.Id, studentId, ct);
@@ -225,6 +239,9 @@ public class SubmissionService(
                 new Specification<Question>().IgnoreFilters().Include("Options").Where(q => qIds.Contains(q.Id)).Order(q => q.OrderNo).Split(), ct)
             : [];
 
+        var attachments = await fileAssets.ListAsync(
+            new Specification<FileAsset>().Where(f => f.SubmissionId == submissionId).OrderDesc(f => f.CreatedAt), ct);
+
         return new SubmissionDetailDto(
             sub.Id, sub.AssignmentId, assignment?.LessonId, sub.StudentId, sub.Student.FullName, sub.Status.ToString(),
             sub.SubmittedAt, sub.AutoScore, sub.ManualScore, sub.FinalScore,
@@ -240,7 +257,8 @@ public class SubmissionService(
             sub.GradingNote is { IsDeleted: false } n
                 ? new GradingNoteDto(n.WeakTags, n.Comment, n.Todos, n.SentAt, n.Reply)
                 : null,
-            assignment?.Title);
+            assignment?.Title,
+            attachments.Select(f => FileService.ToDto(f)).ToList());
     }
 }
 

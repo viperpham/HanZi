@@ -13,8 +13,8 @@ import { ToastService } from '../toast.service';
     <div class="min-h-screen flex flex-col lg:flex-row">
 
       <!-- ===== LEFT PANEL — Branding ===== -->
-      <div class="lg:w-[45%] bg-gradient-to-br from-red-700 via-red-600 to-rose-500
-                  flex flex-col items-center justify-center p-10 text-white relative overflow-hidden">
+      <div class="hidden lg:flex lg:w-[45%] bg-gradient-to-br from-red-700 via-red-600 to-rose-500
+                  flex-col items-center justify-center p-10 text-white relative overflow-hidden">
 
         <!-- Decorative circles -->
         <div class="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-white/5"></div>
@@ -61,7 +61,7 @@ import { ToastService } from '../toast.service';
       </div>
 
       <!-- ===== RIGHT PANEL — Form ===== -->
-      <div class="flex-1 flex flex-col items-center justify-center p-8 bg-base-100">
+      <div class="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-base-100">
         <div class="w-full max-w-sm">
 
           <!-- Mobile logo (chỉ hiện trên mobile) -->
@@ -73,16 +73,16 @@ import { ToastService } from '../toast.service';
 
           @if (mode() === 'login') {
             <div>
-              <h2 class="text-2xl font-extrabold text-base-content mb-1">Chào mừng trở lại</h2>
-              <p class="text-sm text-base-content/50 mb-7">Đăng nhập để tiếp tục học</p>
+              <h2 class="text-2xl font-extrabold text-base-content mb-1">Đăng nhập hệ thống</h2>
+              <p class="text-sm text-base-content/50 mb-7">Nhập tài khoản để tiếp tục</p>
 
               <form (ngSubmit)="submit()" class="space-y-4">
                 <fieldset class="fieldset">
-                  <legend class="fieldset-legend text-sm font-semibold">Email</legend>
+                  <legend class="fieldset-legend text-sm font-semibold">Tài khoản</legend>
                   <label class="input flex items-center gap-2 w-full focus-within:input-error">
-                    <i class="fa-solid fa-envelope text-base-content/40 fa-sm"></i>
-                    <input [(ngModel)]="email" name="email" type="email"
-                      placeholder="you@email.com" class="grow" autocomplete="email" />
+                    <i class="fa-solid fa-user text-base-content/40 fa-sm"></i>
+                    <input [(ngModel)]="account" name="account" type="text"
+                      placeholder="Nhập tên đăng nhập hoặc email" class="grow" autocomplete="username" />
                   </label>
                 </fieldset>
 
@@ -92,7 +92,7 @@ import { ToastService } from '../toast.service';
                     <i class="fa-solid fa-lock text-base-content/40 fa-sm"></i>
                     <input [(ngModel)]="password" name="password"
                       [type]="showPw() ? 'text' : 'password'"
-                      placeholder="••••••" class="grow" autocomplete="current-password" />
+                      placeholder="Nhập mật khẩu của bạn" class="grow" autocomplete="current-password" />
                     <button type="button" (click)="showPw.set(!showPw())"
                       class="text-base-content/40 hover:text-base-content transition-colors">
                       <i class="fa-solid {{ showPw() ? 'fa-eye-slash' : 'fa-eye' }} fa-sm"></i>
@@ -143,8 +143,8 @@ import { ToastService } from '../toast.service';
                   <legend class="fieldset-legend text-sm font-semibold">Email đã đăng ký</legend>
                   <label class="input flex items-center gap-2 w-full focus-within:input-error">
                     <i class="fa-solid fa-envelope text-base-content/40 fa-sm"></i>
-                    <input [(ngModel)]="email" name="femail" type="email"
-                      placeholder="you@email.com" class="grow" />
+                    <input [(ngModel)]="forgotEmail" name="femail" type="email"
+                      placeholder="Nhập email của bạn (VD: email@vidu.com)" class="grow" />
                   </label>
                 </fieldset>
 
@@ -178,7 +178,7 @@ import { ToastService } from '../toast.service';
               <form (ngSubmit)="doReset()" class="space-y-4">
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend text-sm font-semibold">Mã xác nhận 6 số</legend>
-                  <input [(ngModel)]="code" name="code" maxlength="6" placeholder="123456"
+                  <input [(ngModel)]="code" name="code" maxlength="6" placeholder="Nhập mã 6 số"
                     class="input w-full text-center text-2xl font-bold tracking-[0.5em]" />
                 </fieldset>
                 <fieldset class="fieldset">
@@ -186,7 +186,7 @@ import { ToastService } from '../toast.service';
                   <label class="input flex items-center gap-2 w-full">
                     <i class="fa-solid fa-lock text-base-content/40 fa-sm"></i>
                     <input [(ngModel)]="newPassword" name="newPassword" type="password"
-                      placeholder="Ít nhất 6 ký tự" class="grow" />
+                      placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)" class="grow" />
                   </label>
                 </fieldset>
                 @if (error) {
@@ -209,7 +209,8 @@ import { ToastService } from '../toast.service';
   styles: [`.hanzi { font-family: "Noto Sans SC", sans-serif; }`]
 })
 export class LoginComponent {
-  email = '';
+  account = '';
+  forgotEmail = '';
   password = '';
   code = '';
   newPassword = '';
@@ -227,7 +228,7 @@ export class LoginComponent {
   submit() {
     this.loading = true;
     this.error = '';
-    this.auth.login(this.email, this.password).subscribe({
+    this.auth.login(this.account, this.password).subscribe({
       next: (res) => {
         if (res.success) {
           this.toast.success('Đăng nhập thành công!');
@@ -246,7 +247,7 @@ export class LoginComponent {
     this.loading = true;
     this.error = '';
     this.devCode.set('');
-    this.http.post<any>('/api/auth/forgot-password', { email: this.email }).subscribe({
+    this.http.post<any>('/api/auth/forgot-password', { email: this.forgotEmail }).subscribe({
       next: (res) => {
         if (res.success) {
           this.devCode.set(res.data?.code ?? '');
@@ -262,7 +263,7 @@ export class LoginComponent {
   doReset() {
     this.loading = true;
     this.error = '';
-    this.http.post<any>('/api/auth/reset-password', { email: this.email, code: this.code, newPassword: this.newPassword }).subscribe({
+    this.http.post<any>('/api/auth/reset-password', { email: this.forgotEmail, code: this.code, newPassword: this.newPassword }).subscribe({
       next: (res) => {
         if (res.success) {
           this.toast.success('Đã đặt lại mật khẩu. Đăng nhập lại nhé!');
@@ -279,6 +280,7 @@ export class LoginComponent {
     this.error = '';
     this.code = '';
     this.newPassword = '';
+    this.forgotEmail = '';
     this.devCode.set('');
   }
 }

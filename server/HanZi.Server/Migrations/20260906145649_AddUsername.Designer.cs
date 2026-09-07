@@ -3,6 +3,7 @@ using System;
 using HanZi.Server.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HanZi.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260906145649_AddUsername")]
+    partial class AddUsername
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -591,77 +594,6 @@ namespace HanZi.Server.Migrations
                         .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("class_students", (string)null);
-                });
-
-            modelBuilder.Entity("HanZi.Server.Domain.Entities.FileAsset", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("LessonId")
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("StoredName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<Guid?>("SubmissionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UploaderId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Kind");
-
-                    b.HasIndex("LessonId");
-
-                    b.HasIndex("SubmissionId");
-
-                    b.HasIndex("UploaderId");
-
-                    b.ToTable("file_assets", (string)null);
                 });
 
             modelBuilder.Entity("HanZi.Server.Domain.Entities.GradingNote", b =>
@@ -1625,17 +1557,6 @@ namespace HanZi.Server.Migrations
                     b.Navigation("Class");
 
                     b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("HanZi.Server.Domain.Entities.FileAsset", b =>
-                {
-                    b.HasOne("HanZi.Server.Domain.Entities.User", "Uploader")
-                        .WithMany()
-                        .HasForeignKey("UploaderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Uploader");
                 });
 
             modelBuilder.Entity("HanZi.Server.Domain.Entities.GradingNote", b =>

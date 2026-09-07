@@ -18,38 +18,39 @@ interface SubStats {
   selector: 'app-assignments',
   standalone: true,
   template: `
-    <div class="space-y-6">
+    <div class="space-y-4 sm:space-y-6">
 
       <!-- ===== HEADER ===== -->
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 class="text-2xl font-extrabold text-base-content">Bài tập</h1>
-          <p class="text-sm text-base-content/50 mt-0.5">Quản lý và giao bài tập cho lớp</p>
+          <h1 class="text-xl sm:text-2xl font-black text-base-content tracking-tight">Bài tập</h1>
+          <p class="text-xs sm:text-sm text-base-content/50 mt-0.5">Quản lý và giao bài tập theo lớp học</p>
         </div>
-        <button (click)="add()" class="btn btn-error btn-sm text-white gap-2 shadow-sm shadow-error/30">
-          <i class="fa-solid fa-plus"></i> Giao bài tập
+        <button (click)="add()" class="btn btn-error btn-sm text-white rounded-xl gap-2 font-bold shadow-md shadow-error/25 hover:shadow-lg transition-all self-start sm:self-auto">
+          <i class="fa-solid fa-plus text-xs"></i> Giao bài tập
         </button>
       </div>
 
       <!-- ===== FILTER BAR ===== -->
-      <div class="card bg-base-100 border border-base-200 shadow-sm">
-        <div class="card-body p-4">
-          <div class="flex flex-wrap items-center gap-3">
-            <div class="w-9 h-9 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
-              <i class="fa-solid fa-filter text-error text-sm"></i>
+      <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-3 sm:p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-filter text-error text-xs"></i>
             </div>
-            <span class="text-sm font-semibold text-base-content/70">Lọc theo lớp</span>
-            <div class="select-wrap">
-              <select [(ngModel)]="classId" (change)="load()"
-                class="select select-sm min-w-[200px]">
-                <option value="" disabled>— chọn lớp —</option>
-                @for (c of classes; track c.id) {
-                  <option [value]="c.id">{{ c.name }}</option>
-                }
-              </select>
-            </div>
+            <span class="text-xs sm:text-sm font-bold text-base-content">Lọc theo lớp học</span>
+          </div>
+
+          <div class="flex items-center gap-2.5 flex-1 sm:justify-end">
+            <select [(ngModel)]="classId" (change)="load()"
+              class="select select-bordered select-sm rounded-xl w-full sm:w-72 bg-base-100 text-xs sm:text-sm font-medium">
+              <option value="" disabled>— Chọn lớp học cần quản lý —</option>
+              @for (c of classes; track c.id) {
+                <option [value]="c.id">{{ c.name }}</option>
+              }
+            </select>
             @if (classId && items.length) {
-              <span class="ml-auto text-xs font-semibold text-base-content/40">
+              <span class="badge badge-sm font-bold bg-error/10 text-error border-error/20 shrink-0">
                 {{ items.length }} bài tập
               </span>
             }
@@ -57,71 +58,66 @@ interface SubStats {
         </div>
       </div>
 
-      <!-- ===== BẢNG BÀI TẬP ===== -->
+      <!-- ===== DANH SÁCH BÀI TẬP ===== -->
       @if (classId && items.length) {
-        <div class="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+        <!-- Desktop Table -->
+        <div class="hidden md:block card bg-base-100 border border-base-200 shadow-sm rounded-2xl overflow-hidden">
           <div class="overflow-x-auto">
-            <table class="table w-full min-w-[600px]">
+            <table class="table w-full">
               <thead>
-                <tr class="bg-base-200/50">
-                  <th class="text-xs font-semibold uppercase tracking-wide text-base-content/50 py-3">Bài tập</th>
-                  <th class="text-xs font-semibold uppercase tracking-wide text-base-content/50 py-3">Hạn nộp</th>
-                  <th class="text-xs font-semibold uppercase tracking-wide text-base-content/50 py-3 text-center">Số câu</th>
-                  <th class="py-3 text-right"></th>
+                <tr class="bg-base-200/40 text-[11px] font-bold uppercase tracking-wider text-base-content/60 border-b border-base-200">
+                  <th class="py-3.5 pl-6">Bài tập</th>
+                  <th class="py-3.5">Hạn nộp</th>
+                  <th class="py-3.5 text-center">Số câu</th>
+                  <th class="py-3.5 pr-6 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-base-200">
                 @for (a of items; track a.id) {
-                  <tr class="hover:bg-base-50 transition-colors group">
-                    <!-- Tiêu đề -->
-                    <td class="py-3.5">
+                  <tr class="hover:bg-base-200/30 transition-colors">
+                    <td class="pl-6 py-3.5">
                       <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-error/8 flex items-center justify-center shrink-0">
-                          <i class="fa-solid fa-clipboard-list text-error text-xs"></i>
+                        <div class="w-10 h-10 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0">
+                          <i class="fa-solid fa-clipboard-list text-sm"></i>
                         </div>
-                        <span class="font-semibold text-sm text-base-content">{{ a.title }}</span>
+                        <div>
+                          <div class="font-bold text-sm text-base-content">{{ a.title }}</div>
+                          <div class="text-xs text-base-content/40">Mã: {{ a.id.slice(0, 8) }}</div>
+                        </div>
                       </div>
                     </td>
-
-                    <!-- Hạn nộp -->
                     <td class="py-3.5">
-                      <div class="flex items-center gap-1.5 text-sm text-base-content/60">
-                        <i class="fa-solid fa-clock fa-xs text-base-content/30"></i>
+                      <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-base-200/60 text-base-content/70">
+                        <i class="fa-regular fa-clock text-base-content/40"></i>
                         {{ a.dueAt | date:'dd/MM/yyyy HH:mm' }}
                       </div>
                     </td>
-
-                    <!-- Số câu -->
                     <td class="py-3.5 text-center">
-                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
-                                   bg-base-200 text-base-content/60">
+                      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-base-200 text-base-content/70 border border-base-300/60">
                         {{ a.questionCount }} câu
                       </span>
                     </td>
-
-                    <!-- Hành động -->
-                    <td class="py-3.5 text-right">
-                      <div class="flex items-center justify-end gap-0.5
-                                  opacity-40 group-hover:opacity-100 transition-opacity">
-                        <button (click)="view(a)" title="Xem đề"
-                          class="btn btn-ghost btn-xs btn-square hover:text-info hover:bg-info/10 rounded-lg">
-                          <i class="fa-solid fa-eye fa-xs"></i>
+                    <td class="pr-6 py-3.5 text-right">
+                      <div class="inline-flex items-center gap-1">
+                        <button (click)="view(a)" title="Xem đề bài"
+                          class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-info hover:bg-info/10">
+                          <i class="fa-solid fa-eye text-xs"></i>
                         </button>
-                        <button (click)="edit(a)" title="Sửa bài tập"
-                          class="btn btn-ghost btn-xs btn-square hover:text-warning hover:bg-warning/10 rounded-lg">
-                          <i class="fa-solid fa-pencil fa-xs"></i>
+                        <button (click)="viewSubs(a)" title="Xem bài đã nộp"
+                          class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-amber-600 hover:bg-amber-500/10">
+                          <i class="fa-solid fa-inbox text-xs"></i>
                         </button>
                         <button (click)="exportScores(a)" title="Xuất điểm CSV"
-                          class="btn btn-ghost btn-xs btn-square hover:text-success hover:bg-success/10 rounded-lg">
-                          <i class="fa-solid fa-chart-simple fa-xs"></i>
+                          class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-success hover:bg-success/10">
+                          <i class="fa-solid fa-file-csv text-xs"></i>
                         </button>
-                      <button (click)="viewSubs(a)" title="Xem bài đã nộp"
-                        class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-warning">
-                        <i class="fa-solid fa-inbox"></i>
-                      </button>
+                        <button (click)="edit(a)" title="Sửa bài tập"
+                          class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-warning hover:bg-warning/10">
+                          <i class="fa-solid fa-pencil text-xs"></i>
+                        </button>
                         <button (click)="del(a)" title="Xoá bài tập"
-                          class="btn btn-ghost btn-xs btn-square hover:text-error hover:bg-error/10 rounded-lg">
-                          <i class="fa-solid fa-trash fa-xs"></i>
+                          class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-error hover:bg-error/10">
+                          <i class="fa-solid fa-trash text-xs"></i>
                         </button>
                       </div>
                     </td>
@@ -131,29 +127,82 @@ interface SubStats {
             </table>
           </div>
         </div>
+
+        <!-- Mobile Card List -->
+        <div class="md:hidden space-y-3">
+          @for (a of items; track a.id) {
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2.5">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-clipboard-list text-sm"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="font-bold text-sm text-base-content truncate">{{ a.title }}</h3>
+                    <p class="text-xs text-base-content/50 flex items-center gap-1 mt-0.5">
+                      <i class="fa-regular fa-clock text-[10px]"></i>
+                      Hạn: {{ a.dueAt | date:'dd/MM/yyyy HH:mm' }}
+                    </p>
+                  </div>
+                </div>
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/70 shrink-0">
+                  {{ a.questionCount }} câu
+                </span>
+              </div>
+
+              <!-- Action Bar Mobile -->
+              <div class="flex items-center justify-between gap-2 pt-2 border-t border-base-200">
+                <div class="flex items-center gap-2 flex-1">
+                  <button (click)="view(a)" class="btn btn-outline btn-xs rounded-xl flex-1 border-base-300 font-bold gap-1 text-base-content hover:bg-base-200">
+                    <i class="fa-solid fa-eye text-xs text-info"></i> Xem đề
+                  </button>
+                  <button (click)="viewSubs(a)" class="btn btn-outline btn-xs rounded-xl flex-1 border-base-300 font-bold gap-1 text-base-content hover:bg-amber-500/10 hover:border-amber-500 hover:text-amber-700">
+                    <i class="fa-solid fa-inbox text-xs text-amber-600"></i> Bài nộp
+                  </button>
+                </div>
+                <div class="flex items-center gap-1 shrink-0 border-l border-base-200 pl-2">
+                  <button (click)="exportScores(a)" title="Xuất điểm CSV"
+                    class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-success">
+                    <i class="fa-solid fa-file-csv text-xs"></i>
+                  </button>
+                  <button (click)="edit(a)" title="Sửa bài tập"
+                    class="btn btn-ghost btn-xs btn-square rounded-lg text-base-content/60 hover:text-warning">
+                    <i class="fa-solid fa-pencil text-xs"></i>
+                  </button>
+                  <button (click)="del(a)" title="Xoá bài tập"
+                    class="btn btn-ghost btn-xs btn-square rounded-lg text-error/70 hover:text-error hover:bg-error/10">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
       }
 
       @if (classId && !items.length) {
-        <div class="card bg-base-100 border border-dashed border-base-300">
-          <div class="card-body py-16 items-center text-center gap-3">
-            <div class="w-14 h-14 rounded-2xl bg-base-200 flex items-center justify-center">
-              <i class="fa-solid fa-clipboard-list text-2xl text-base-content/20"></i>
-            </div>
-            <p class="text-sm text-base-content/40">Lớp này chưa có bài tập nào</p>
-            <button (click)="add()" class="btn btn-error btn-sm text-white gap-2 mt-1">
-              <i class="fa-solid fa-plus fa-xs"></i> Giao bài tập ngay
-            </button>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl py-14 items-center text-center gap-3">
+          <div class="w-14 h-14 rounded-2xl bg-base-200/60 flex items-center justify-center">
+            <i class="fa-solid fa-clipboard-list text-2xl text-base-content/30"></i>
           </div>
+          <div>
+            <p class="text-sm font-bold text-base-content/70">Lớp này chưa có bài tập nào</p>
+            <p class="text-xs text-base-content/40 mt-1">Giao bài tập để học viên bắt đầu luyện tập</p>
+          </div>
+          <button (click)="add()" class="btn btn-error btn-sm text-white rounded-xl gap-2 font-bold shadow-md shadow-error/25 mt-1">
+            <i class="fa-solid fa-plus text-xs"></i> Giao bài tập ngay
+          </button>
         </div>
       }
 
       @if (!classId) {
-        <div class="card bg-base-100 border border-dashed border-base-300">
-          <div class="card-body py-16 items-center text-center gap-3">
-            <div class="w-14 h-14 rounded-2xl bg-error/5 border border-error/15 flex items-center justify-center">
-              <i class="fa-solid fa-filter text-2xl text-error/30"></i>
-            </div>
-            <p class="text-sm text-base-content/40">Chọn lớp để xem danh sách bài tập</p>
+        <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl py-14 items-center text-center gap-3">
+          <div class="w-14 h-14 rounded-2xl bg-error/10 flex items-center justify-center">
+            <i class="fa-solid fa-filter text-2xl text-error"></i>
+          </div>
+          <div>
+            <p class="text-sm font-bold text-base-content/70">Vui lòng chọn lớp học</p>
+            <p class="text-xs text-base-content/40 mt-1">Chọn lớp ở bộ lọc bên trên để xem danh sách bài tập đã giao</p>
           </div>
         </div>
       }
@@ -191,7 +240,7 @@ interface SubStats {
               @for (q of d.questions; track q.id) {
                 <div class="rounded-xl border border-base-200 bg-base-50/50 p-4">
                   <div class="flex items-center gap-2 mb-2">
-                    <span class="grid h-6 w-6 place-items-center rounded-lg bg-error/10 text-xs font-bold text-error">{{ q.orderNo }}</span>
+                    <span class="w-6 h-6 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center border border-primary/20">{{ q.orderNo }}</span>
                     <span class="text-xs px-2 py-0.5 rounded-full bg-base-200 text-base-content/60 font-medium">{{ q.type }}</span>
                     <span class="text-xs text-base-content/40">{{ q.points }} điểm</span>
                   </div>
@@ -366,7 +415,7 @@ interface SubStats {
               @for (q of d.questions; track q.id; let i = $index) {
                 <div class="rounded-xl border border-base-200 p-4">
                   <div class="flex items-center gap-2 mb-2">
-                    <span class="grid h-6 w-6 place-items-center rounded-lg bg-error/10 text-xs font-bold text-error">{{ i + 1 }}</span>
+                    <span class="w-6 h-6 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center border border-primary/20">{{ i + 1 }}</span>
                     <span class="text-xs text-base-content/40">{{ q.points }} điểm</span>
                   </div>
                   <p class="hanzi text-sm font-semibold text-base-content">{{ q.prompt }}</p>
@@ -388,210 +437,298 @@ interface SubStats {
 
       <!-- ===== SỬA BÀI TẬP ===== -->
       @if (editing; as e) {
-        <div class="card bg-base-100 border border-error/30 shadow-md">
-          <div class="card-body p-5 gap-4">
-
-            <!-- Header -->
-            <div class="flex flex-wrap items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-error/10 flex items-center justify-center">
-                <i class="fa-solid fa-pencil text-error text-sm"></i>
+        <div class="card bg-base-100 border border-base-200 shadow-xl rounded-2xl overflow-hidden mb-8">
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-primary/5 via-base-100 to-indigo-500/5 p-5 sm:p-6 border-b border-base-200 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shadow-sm border border-primary/20">
+                <i class="fa-solid fa-pen-to-square"></i>
               </div>
               <div>
-                <h2 class="text-base font-extrabold text-base-content">Sửa bài tập</h2>
-                <p class="text-xs text-base-content/40">{{ e.questions.length }} câu hỏi</p>
-              </div>
-              <div class="ml-auto flex gap-2">
-                <button (click)="cancelEdit()" class="btn btn-ghost btn-sm">Huỷ</button>
-                <button (click)="saveEdit()" [disabled]="savingEdit"
-                  class="btn btn-error btn-sm text-white gap-2">
-                  <i class="fa-solid fa-floppy-disk"></i>
-                  {{ savingEdit ? 'Đang lưu…' : 'Lưu bài tập' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Thông tin chung -->
-            <div class="grid gap-3 sm:grid-cols-2 p-4 rounded-xl bg-base-200/40 border border-base-200">
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Tiêu đề</span>
-                <input [(ngModel)]="e.title" class="input input-sm w-full" />
-              </label>
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Lời dặn</span>
-                <input [(ngModel)]="e.description" class="input input-sm w-full" />
-              </label>
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Hạn nộp</span>
-                <input type="datetime-local" [(ngModel)]="e.dueAt" class="input input-sm w-full" />
-              </label>
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Hẹn giờ giao (trống = giao ngay)</span>
-                <input type="datetime-local" [(ngModel)]="e.publishAt" class="input input-sm w-full" />
-              </label>
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Thời gian làm (phút)</span>
-                <input type="number" min="1" [(ngModel)]="e.durationMin" class="input input-sm w-full" />
-              </label>
-              <label class="form-control">
-                <span class="label-text text-sm font-semibold mb-1">Nộp muộn</span>
-                <div class="select-wrap">
-                  <select [(ngModel)]="e.latePolicy" class="select select-sm w-full">
-                    <option value="Penalty">Cho nộp muộn (trừ điểm)</option>
-                    <option value="Block">Chặn nộp sau hạn</option>
-                  </select>
-                </div>
-              </label>
-              <div class="sm:col-span-2 flex items-center gap-6 pt-1">
-                <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                  <input type="checkbox" [(ngModel)]="e.showAnswer" class="toggle toggle-sm toggle-error" />
-                  Hiện đáp án sau khi chấm
-                </label>
-                <label class="flex cursor-pointer items-center gap-2 text-sm font-semibold">
-                  <input type="checkbox" [(ngModel)]="e.shuffle" class="toggle toggle-sm toggle-error" />
-                  Đảo thứ tự câu
-                </label>
-              </div>
-
-              <!-- Nhận bài từ (loại/khôi phục từng học viên) -->
-              <div class="sm:col-span-2 rounded-xl border border-base-200 p-3">
-                <div class="flex items-center gap-2 mb-2">
-                  <p class="text-xs font-bold text-base-content/50 flex items-center gap-1.5">
-                    <i class="fa-solid fa-users fa-xs"></i> Nhận bài từ
-                  </p>
-                  <span class="text-xs text-base-content/40">
-                    {{ editStudents.length - excludedIds().length }}/{{ editStudents.length }} học viên · bấm tên để loại/khôi phục
+                <h2 class="text-base sm:text-lg font-extrabold text-base-content flex items-center gap-2">
+                  Chỉnh sửa bài tập
+                  <span class="badge badge-primary badge-outline text-xs font-semibold px-2 py-0.5">
+                    {{ e.questions.length }} câu hỏi
                   </span>
-                </div>
-                @if (editStudents.length) {
-                  <div class="flex flex-wrap gap-1.5">
-                    @for (s of editStudents; track s.id) {
-                      <button type="button" (click)="toggleExclude(s.id)"
-                        class="btn btn-xs rounded-full gap-1 border"
-                        [class]="isExcluded(s.id)
-                          ? 'bg-base-200 border-base-200 text-base-content/30 line-through'
-                          : 'bg-success/10 border-success/30 text-success'">
-                        <i class="fa-solid" [class.fa-user-slash]="isExcluded(s.id)" [class.fa-user-check]="!isExcluded(s.id)"></i>
-                        {{ s.fullName }}
-                      </button>
-                    }
-                  </div>
-                } @else {
-                  <p class="text-xs text-base-content/30">Đang tải danh sách lớp…</p>
-                }
+                </h2>
+                <p class="text-xs text-base-content/50">Cập nhật nội dung, hạn nộp và ngân hàng câu hỏi cho lớp</p>
               </div>
             </div>
-
-            <!-- Câu hỏi -->
             <div class="flex items-center gap-2">
-              <div class="flex-1 h-px bg-base-200"></div>
-              <span class="text-xs font-bold text-base-content/40 uppercase tracking-wider px-2">Câu hỏi</span>
-              <div class="flex-1 h-px bg-base-200"></div>
+              <button type="button" (click)="cancelEdit()" class="btn btn-ghost btn-sm rounded-xl">Huỷ</button>
+              <button type="button" (click)="saveEdit()" [disabled]="savingEdit"
+                class="btn btn-primary btn-sm rounded-xl text-white shadow-md shadow-primary/20 gap-2 px-5 font-semibold">
+                <i class="fa-solid fa-floppy-disk"></i>
+                {{ savingEdit ? 'Đang lưu…' : 'Lưu bài tập' }}
+              </button>
             </div>
+          </div>
 
-            <div class="space-y-3">
-              @for (q of e.questions; track $index; let qi = $index) {
-                <div class="rounded-xl border border-base-200 p-4 bg-base-50/50">
-                  <div class="flex flex-wrap items-center gap-2 mb-3">
-                    <span class="grid h-7 w-7 place-items-center rounded-lg bg-error/10 text-sm font-bold text-error">{{ qi + 1 }}</span>
-                    <div class="select-wrap select-wrap-xs">
-                      <select [(ngModel)]="q.type" (ngModelChange)="onTypeChange(q)" class="select select-xs">
-                        <option value="MultipleChoice">Trắc nghiệm</option>
-                        <option value="Fill">Điền từ</option>
-                        <option value="Order">Sắp xếp câu</option>
-                        <option value="Match">Nối từ</option>
-                        <option value="Writing">Viết đoạn</option>
-                        <option value="Record">Ghi âm</option>
-                        <option value="Photo">Nộp ảnh</option>
-                      </select>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <input type="number" step="0.5" min="0.5" [(ngModel)]="q.points"
-                        class="input input-xs w-16 text-center" title="Điểm" />
-                      <span class="text-xs text-base-content/40">đ</span>
-                    </div>
-                    <div class="ml-auto flex gap-0.5">
-                      <button (click)="moveQ(qi, -1)" [disabled]="qi === 0"
-                        class="btn btn-ghost btn-xs btn-square disabled:opacity-20" title="Di chuyển lên">
-                        <i class="fa-solid fa-chevron-up fa-xs"></i>
-                      </button>
-                      <button (click)="moveQ(qi, 1)" [disabled]="qi === e.questions.length - 1"
-                        class="btn btn-ghost btn-xs btn-square disabled:opacity-20" title="Di chuyển xuống">
-                        <i class="fa-solid fa-chevron-down fa-xs"></i>
-                      </button>
-                      <button (click)="delQ(qi)"
-                        class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10" title="Xoá câu">
-                        <i class="fa-solid fa-trash fa-xs"></i>
-                      </button>
-                    </div>
-                  </div>
+          <div class="card-body p-5 sm:p-6 gap-6">
+            <!-- Thông tin chung -->
+            <div class="p-5 sm:p-6 rounded-2xl bg-base-200/30 border border-base-200 space-y-4">
+              <div class="flex items-center gap-2 text-sm font-bold text-base-content/80 pb-1 border-b border-base-200/60">
+                <i class="fa-solid fa-sliders text-primary"></i>
+                <span>Cấu hình thông tin bài tập</span>
+              </div>
 
-                  <input [(ngModel)]="q.prompt" placeholder="Nội dung câu hỏi…"
-                    class="input input-sm w-full mb-3" />
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="form-control">
+                  <span class="label-text text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-heading text-xs text-base-content/40"></i> Tiêu đề bài tập
+                  </span>
+                  <input [(ngModel)]="e.title" placeholder="VD: Bài tập chữ Hán Bài 1" class="input input-bordered input-sm rounded-xl focus:border-primary w-full" />
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-message text-xs text-base-content/40"></i> Lời dặn / Hướng dẫn
+                  </span>
+                  <input [(ngModel)]="e.description" placeholder="VD: Làm bài cẩn thận, xem lại từ vựng trước khi nộp..." class="input input-bordered input-sm rounded-xl focus:border-primary w-full" />
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-regular fa-clock text-xs text-base-content/40"></i> Hạn nộp bài
+                  </span>
+                  <input type="datetime-local" [(ngModel)]="e.dueAt" class="input input-bordered input-sm rounded-xl focus:border-primary w-full" />
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-calendar-check text-xs text-base-content/40"></i> Hẹn giờ giao (bỏ trống = giao ngay)
+                  </span>
+                  <input type="datetime-local" [(ngModel)]="e.publishAt" class="input input-bordered input-sm rounded-xl focus:border-primary w-full" />
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-stopwatch text-xs text-base-content/40"></i> Thời gian làm bài (phút)
+                  </span>
+                  <input type="number" min="1" [(ngModel)]="e.durationMin" placeholder="15" class="input input-bordered input-sm rounded-xl focus:border-primary w-full" />
+                </label>
+                <label class="form-control">
+                  <span class="label-text text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-shield-halved text-xs text-base-content/40"></i> Chính sách nộp muộn
+                  </span>
+                  <select [(ngModel)]="e.latePolicy" class="select select-bordered select-sm rounded-xl focus:border-primary w-full">
+                    <option value="Penalty">Cho phép nộp muộn (trừ điểm)</option>
+                    <option value="Block">Chặn không cho nộp sau hạn</option>
+                  </select>
+                </label>
 
-                  <label class="form-control mb-3">
-                    <span class="label-text text-xs font-semibold text-base-content/50 mb-1">
-                      Mảng kiến thức (dùng thống kê điểm theo mảng — VD: Từ vựng, Ngữ pháp Bài 1)
+                <!-- Tùy chọn hiển thị & đảo đề -->
+                <div class="sm:col-span-2 grid sm:grid-cols-2 gap-3 pt-1">
+                  <label class="flex cursor-pointer items-center justify-between p-3 rounded-xl bg-base-100 border border-base-200 hover:border-primary/40 transition-all">
+                    <span class="text-xs font-bold text-base-content/70 flex items-center gap-2">
+                      <i class="fa-regular fa-eye text-primary"></i> Hiện đáp án sau khi chấm
                     </span>
-                    <input [(ngModel)]="q.knowledgeTag" placeholder="VD: Từ vựng"
-                      class="input input-xs w-full" />
+                    <input type="checkbox" [(ngModel)]="e.showAnswer" class="toggle toggle-primary toggle-sm" />
                   </label>
+                  <label class="flex cursor-pointer items-center justify-between p-3 rounded-xl bg-base-100 border border-base-200 hover:border-primary/40 transition-all">
+                    <span class="text-xs font-bold text-base-content/70 flex items-center gap-2">
+                      <i class="fa-solid fa-shuffle text-primary"></i> Đảo thứ tự câu hỏi
+                    </span>
+                    <input type="checkbox" [(ngModel)]="e.shuffle" class="toggle toggle-primary toggle-sm" />
+                  </label>
+                </div>
 
-                  @if (q.type === 'MultipleChoice') {
-                    <div class="space-y-2">
-                      @for (opt of q.options; track $index; let oi = $index) {
-                        <div class="flex items-center gap-2">
-                          <button (click)="setAns(q, oi)"
-                            class="grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-bold transition-colors"
-                            [class]="isAns(q, oi) ? 'border-success bg-success text-white' : 'border-base-300 text-base-content/40 hover:border-success/50'"
-                            title="Chọn là đáp án đúng">
-                            @if (isAns(q, oi)) {
-                              <i class="fa-solid fa-check fa-xs"></i>
-                            } @else {
-                              {{ ['A','B','C','D'][oi] }}
-                            }
-                          </button>
-                          <input [(ngModel)]="q.options[oi]" placeholder="Nội dung lựa chọn…"
-                            class="input input-sm grow"
-                            [class.input-success]="isAns(q, oi)" />
-                          <button (click)="delOpt(q, oi)"
-                            class="btn btn-ghost btn-xs btn-square text-base-content/30 hover:text-error hover:bg-error/10"
-                            title="Xoá lựa chọn">
-                            <i class="fa-solid fa-xmark fa-xs"></i>
-                          </button>
-                        </div>
-                      }
-                      <button (click)="addOpt(q)" class="btn btn-ghost btn-xs gap-1 text-base-content/50 hover:text-base-content">
-                        <i class="fa-solid fa-plus fa-xs"></i> Thêm lựa chọn
-                      </button>
-                    </div>
-                  } @else if (q.type === 'Writing' || q.type === 'Record' || q.type === 'Photo') {
-                    <label class="form-control">
-                      <span class="label-text text-xs font-semibold text-base-content/50 mb-1">Gợi ý chấm (hiện cho học viên khi làm bài)</span>
-                      <input [(ngModel)]="q.sampleAnswer" class="input input-sm w-full"
-                        placeholder="VD: Giới thiệu bản thân bằng 5 câu" />
-                    </label>
-                  } @else {
-                    <label class="form-control">
-                      <span class="label-text text-xs font-semibold text-base-content/50 mb-1">
-                        Đáp án đúng {{ q.type === 'Order' ? '(thứ tự, VD: 3-1-0-2)' : q.type === 'Match' ? '(cặp nối, VD: 0-0,1-1,2-2)' : '' }}
+                <!-- Nhận bài từ (loại/khôi phục từng học viên) -->
+                <div class="sm:col-span-2 rounded-xl bg-base-100 border border-base-200 p-4 space-y-2.5">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="text-xs font-bold text-base-content/70 flex items-center gap-1.5">
+                      <i class="fa-solid fa-user-group text-primary"></i> Học viên nhận bài:
+                      <span class="badge badge-sm badge-ghost font-semibold">
+                        {{ editStudents.length - excludedIds().length }}/{{ editStudents.length }} học viên
                       </span>
-                      <input [(ngModel)]="q.answer" class="hanzi input input-sm w-full" placeholder="Đáp án…" />
-                    </label>
+                    </p>
+                    <span class="text-[11px] text-base-content/40">Bấm tên để loại trừ hoặc khôi phục</span>
+                  </div>
+                  @if (editStudents.length) {
+                    <div class="flex flex-wrap gap-2">
+                      @for (s of editStudents; track s.id) {
+                        <button type="button" (click)="toggleExclude(s.id)"
+                          class="btn btn-xs rounded-xl gap-1.5 border transition-all font-medium"
+                          [class]="isExcluded(s.id)
+                            ? 'bg-base-200 border-base-200 text-base-content/30 line-through'
+                            : 'bg-primary/10 border-primary/25 text-primary hover:bg-primary/20'">
+                          <i class="fa-solid" [class.fa-user-xmark]="isExcluded(s.id)" [class.fa-user-check]="!isExcluded(s.id)"></i>
+                          {{ s.fullName }}
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <p class="text-xs text-base-content/30 italic">Đang tải danh sách học viên lớp…</p>
                   }
                 </div>
-              }
-              <button (click)="addQ()" class="btn btn-outline btn-sm gap-2 w-full border-dashed hover:border-error hover:text-error">
+              </div>
+            </div>
+
+            <!-- Header danh sách câu hỏi -->
+            <div class="flex items-center justify-between pt-2">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-primary"></i>
+                <h3 class="font-bold text-sm uppercase tracking-wider text-base-content/80">Danh sách câu hỏi</h3>
+                <span class="badge badge-sm badge-ghost font-mono font-bold">{{ e.questions.length }}</span>
+              </div>
+              <button type="button" (click)="addQ()" class="btn btn-primary btn-xs rounded-lg gap-1.5 shadow-sm">
                 <i class="fa-solid fa-plus fa-xs"></i> Thêm câu hỏi
               </button>
             </div>
 
-            <div class="flex justify-end gap-2 border-t border-base-200 pt-4">
-              <button (click)="cancelEdit()" class="btn btn-ghost btn-sm">Huỷ</button>
-              <button (click)="saveEdit()" [disabled]="savingEdit"
-                class="btn btn-error btn-sm text-white gap-2">
-                <i class="fa-solid fa-floppy-disk"></i>
-                {{ savingEdit ? 'Đang lưu…' : 'Lưu bài tập' }}
+            <!-- Danh sách các câu hỏi -->
+            <div class="space-y-4">
+              @for (q of e.questions; track $index; let qi = $index) {
+                <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm hover:shadow-md transition-all p-4 sm:p-5 relative space-y-3.5">
+                  <!-- Header câu hỏi: Căn chuẩn hàng ngang -->
+                  <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-base-200">
+                    <!-- Bên trái: Số thứ tự, Loại câu hỏi, Điểm -->
+                    <div class="flex flex-wrap items-center gap-2.5">
+                      <!-- Badge Số thứ tự câu -->
+                      <span class="w-8 h-8 rounded-xl bg-primary/10 text-primary font-black text-xs flex items-center justify-center border border-primary/20 shadow-xs">
+                        {{ qi + 1 }}
+                      </span>
+
+                      <!-- Dropdown chọn dạng câu hỏi -->
+                      <select [(ngModel)]="q.type" (ngModelChange)="onTypeChange(q)"
+                        class="select select-bordered select-xs rounded-xl font-semibold text-xs focus:border-primary">
+                        <option value="MultipleChoice">📝 Trắc nghiệm</option>
+                        <option value="Fill">✏️ Điền từ</option>
+                        <option value="Order">🔢 Sắp xếp câu</option>
+                        <option value="Match">🔗 Nối từ</option>
+                        <option value="Writing">📄 Viết đoạn</option>
+                        <option value="Record">🎙️ Ghi âm</option>
+                        <option value="Photo">📷 Nộp ảnh</option>
+                      </select>
+
+                      <!-- Ô nhập điểm số chuẩn Join (không lệch chữ đ) -->
+                      <div class="join">
+                        <input type="number" step="0.5" min="0.5" [(ngModel)]="q.points"
+                          class="join-item input input-bordered input-xs w-16 text-center font-bold focus:border-primary text-xs" title="Điểm cho câu này" />
+                        <span class="join-item px-2 bg-base-200 text-[11px] font-semibold flex items-center text-base-content/60 border border-base-300">điểm</span>
+                      </div>
+                    </div>
+
+                    <!-- Bên phải: Di chuyển lên/xuống & Xóa câu -->
+                    <div class="flex items-center gap-1">
+                      <button type="button" (click)="moveQ(qi, -1)" [disabled]="qi === 0"
+                        class="btn btn-ghost btn-xs btn-square rounded-lg disabled:opacity-20 hover:bg-base-200" title="Di chuyển lên">
+                        <i class="fa-solid fa-chevron-up fa-xs"></i>
+                      </button>
+                      <button type="button" (click)="moveQ(qi, 1)" [disabled]="qi === e.questions.length - 1"
+                        class="btn btn-ghost btn-xs btn-square rounded-lg disabled:opacity-20 hover:bg-base-200" title="Di chuyển xuống">
+                        <i class="fa-solid fa-chevron-down fa-xs"></i>
+                      </button>
+                      <div class="w-px h-4 bg-base-200 mx-1"></div>
+                      <button type="button" (click)="delQ(qi)"
+                        class="btn btn-ghost btn-xs btn-square rounded-lg text-error hover:bg-error/10" title="Xoá câu hỏi này">
+                        <i class="fa-solid fa-trash-can fa-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Nội dung câu hỏi (Đề bài) dạng Textarea 2 dòng gõ thoải mái -->
+                  <div>
+                    <label class="block">
+                      <span class="text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-comment-dots text-primary"></i> Đề bài / Nội dung câu hỏi
+                      </span>
+                      <textarea [(ngModel)]="q.prompt" rows="2"
+                        placeholder="Nhập nội dung câu hỏi (VD: Chọn từ thích hợp điền vào chỗ trống: 他是我的____)..."
+                        class="hanzi textarea textarea-bordered w-full rounded-xl text-sm font-medium focus:border-primary resize-y"></textarea>
+                    </label>
+                  </div>
+
+                  <!-- Mảng kiến thức -->
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-base-content/50 shrink-0 flex items-center gap-1">
+                      <i class="fa-solid fa-tag fa-xs"></i> Mảng kiến thức:
+                    </span>
+                    <input [(ngModel)]="q.knowledgeTag" placeholder="VD: Từ vựng Bài 1, Ngữ pháp HSK2..."
+                      class="input input-bordered input-xs grow rounded-lg focus:border-primary text-xs" />
+                  </div>
+
+                  <!-- Khu vực lựa chọn hoặc đáp án tuỳ dạng câu hỏi -->
+                  @if (q.type === 'MultipleChoice') {
+                    <div class="mt-2 space-y-2.5 rounded-xl bg-base-200/30 p-3.5 border border-base-200">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-base-content/70 flex items-center gap-1.5">
+                          <i class="fa-solid fa-list-check text-success"></i> Các phương án lựa chọn:
+                        </span>
+                        <span class="text-[11px] text-base-content/40">Bấm chữ cái để chọn làm đáp án đúng</span>
+                      </div>
+                      @for (opt of q.options; track $index; let oi = $index) {
+                        <div class="flex items-center gap-2.5 p-1.5 rounded-xl transition-all"
+                          [class]="isAns(q, oi) ? 'bg-success/10 border border-success/35' : 'bg-base-100 border border-base-200'">
+                          <!-- Nút chọn đáp án đúng A, B, C, D... -->
+                          <button type="button" (click)="setAns(q, oi)"
+                            class="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-xs font-bold transition-all"
+                            [class]="isAns(q, oi) ? 'bg-success text-white shadow-sm ring-2 ring-success/30' : 'bg-base-200 text-base-content/60 hover:bg-success/20 hover:text-success'"
+                            title="Đánh dấu phương án này là đáp án đúng">
+                            @if (isAns(q, oi)) {
+                              <i class="fa-solid fa-check"></i>
+                            } @else {
+                              {{ ['A','B','C','D','E','F'][oi] }}
+                            }
+                          </button>
+                          <!-- Input nội dung phương án -->
+                          <input [(ngModel)]="q.options[oi]"
+                            [placeholder]="'Nội dung phương án ' + ['A','B','C','D','E','F'][oi] + '...'"
+                            class="hanzi input input-sm grow border-0 bg-transparent focus:ring-0 focus:outline-none text-sm font-medium" />
+                          <!-- Nút xoá phương án -->
+                          <button type="button" (click)="delOpt(q, oi)"
+                            class="btn btn-ghost btn-xs btn-circle text-base-content/30 hover:text-error hover:bg-error/10"
+                            title="Xoá phương án này">
+                            <i class="fa-solid fa-xmark fa-xs"></i>
+                          </button>
+                        </div>
+                      }
+                      <button type="button" (click)="addOpt(q)"
+                        class="btn btn-ghost btn-xs rounded-lg gap-1.5 text-primary hover:bg-primary/10 font-semibold mt-1">
+                        <i class="fa-solid fa-plus fa-xs"></i> Thêm phương án
+                      </button>
+                    </div>
+                  } @else if (q.type === 'Writing' || q.type === 'Record' || q.type === 'Photo') {
+                    <div class="mt-2">
+                      <label class="block">
+                        <span class="text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                          <i class="fa-solid fa-lightbulb text-warning"></i> Gợi ý chấm / Yêu cầu nộp:
+                        </span>
+                        <textarea [(ngModel)]="q.sampleAnswer" rows="2"
+                          class="textarea textarea-bordered w-full rounded-xl text-sm focus:border-primary resize-y"
+                          placeholder="VD: Giới thiệu bản thân bằng ít nhất 5 câu chữ Hán có pinyin..."></textarea>
+                      </label>
+                    </div>
+                  } @else {
+                    <div class="mt-2">
+                      <label class="block">
+                        <span class="text-xs font-bold text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                          <i class="fa-solid fa-key text-success"></i> Đáp án đúng {{ q.type === 'Order' ? '(thứ tự các mảnh ghép, VD: 3-1-0-2)' : q.type === 'Match' ? '(các cặp nối, VD: 0-0,1-1,2-2)' : '(từ hoặc cụm từ cần điền)' }}:
+                        </span>
+                        <input [(ngModel)]="q.answer" class="hanzi input input-bordered input-sm w-full rounded-xl focus:border-primary font-medium"
+                          placeholder="Nhập đáp án chuẩn..." />
+                      </label>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Nút Thêm câu hỏi to dạng Banner -->
+              <button type="button" (click)="addQ()"
+                class="w-full py-4 rounded-2xl border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                <i class="fa-solid fa-circle-plus text-base"></i> Thêm câu hỏi mới
               </button>
+            </div>
+
+            <!-- Footer hành động -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-base-200">
+              <p class="text-xs text-base-content/50 flex items-center gap-1">
+                <i class="fa-solid fa-circle-info text-info"></i> Nhớ bấm <b>Lưu bài tập</b> sau khi hoàn tất chỉnh sửa.
+              </p>
+              <div class="flex items-center gap-2">
+                <button type="button" (click)="cancelEdit()" class="btn btn-ghost btn-sm rounded-xl">Huỷ bỏ</button>
+                <button type="button" (click)="saveEdit()" [disabled]="savingEdit"
+                  class="btn btn-primary btn-sm rounded-xl text-white shadow-md shadow-primary/20 gap-2 px-5 font-semibold">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  {{ savingEdit ? 'Đang lưu…' : 'Lưu bài tập' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -685,14 +822,22 @@ export class AssignmentsComponent implements OnInit {
   }
 
   async add() {
-    if (!this.classId) { this.toast.error('Chọn lớp trước đã.'); return; }
+    if (!this.classId) {
+      this.toast.error('Vui lòng chọn lớp học trước khi giao bài tập.');
+      return;
+    }
+
+    const defaultDue = new Date(Date.now() + 3 * 86400000);
+    const defaultDueStr = new Date(defaultDue.getTime() - defaultDue.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
     const r = await this.modal.form({
-      title: 'Giao bài tập mới', confirmText: 'Tiếp tục',
+      title: 'Giao bài tập mới',
+      confirmText: 'Tiếp tục',
       fields: [
-        { key: 'title', label: 'Tiêu đề', placeholder: 'VD: Bài tập Bài 1 — 你好' },
-        { key: 'description', label: 'Lời dặn', type: 'textarea' },
-        { key: 'dueAt', label: 'Hạn nộp (năm-tháng-ngày giờ:phút)', placeholder: '2026-09-10T19:00' },
-        { key: 'publishAt', label: 'Hẹn giờ giao (bỏ trống = giao ngay)', placeholder: '2026-09-05T08:00' }
+        { key: 'title', label: 'Tiêu đề bài tập', placeholder: 'Nhập tiêu đề bài tập (VD: Bài tập Bài 1 — 你好)' },
+        { key: 'description', label: 'Lời dặn / Hướng dẫn (tuỳ chọn)', type: 'textarea', placeholder: 'Nhập hướng dẫn hoặc lời dặn cho học viên...' },
+        { key: 'dueAt', label: 'Hạn nộp bài', type: 'datetime-local', value: defaultDueStr },
+        { key: 'publishAt', label: 'Hẹn giờ giao bài (bỏ trống = giao ngay)', type: 'datetime-local' }
       ]
     });
     if (!r) return;

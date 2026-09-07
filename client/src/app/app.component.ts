@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { ToastService } from './toast.service';
 import { PushService } from './push.service';
 import { SignalrService } from './signalr.service';
+import { AssetPickerComponent } from './pages/asset-picker.component';
 import { filter } from 'rxjs/operators';
 
 interface Noti { id: string; body: string; link?: string; createdAt: string; read: boolean; }
@@ -19,7 +20,7 @@ interface NavItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DatePipe, AssetPickerComponent],
   template: `
     @if (!auth.isLoggedIn()) {
       <router-outlet />
@@ -152,12 +153,15 @@ interface NavItem {
           </header>
 
           <!-- Page Content -->
-          <main class="flex-1 p-5 lg:p-7 max-w-7xl w-full mx-auto">
+          <main class="flex-1 p-3.5 sm:p-5 lg:p-7 max-w-7xl w-full mx-auto">
             <router-outlet />
           </main>
         </div>
       </div>
     }
+
+    <!-- Modal Thư viện tài liệu (dùng chung mọi trang) -->
+    <asset-picker />
   `,
   styles: []
 })
@@ -195,6 +199,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { label: 'Lớp học',        icon: 'fa-chalkboard',     route: '/classes' },
       { label: 'Bài tập',        icon: 'fa-clipboard-list', route: '/assignments' },
       { label: 'Chấm bài',       icon: 'fa-pen-to-square',  route: '/grading' },
+      { label: 'Tài liệu',       icon: 'fa-folder-open',    route: '/files' },
       { label: 'Cấu hình',       icon: 'fa-gear',           route: '/settings' },
     ];
     if (role === 'Teacher') return [
@@ -203,6 +208,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { label: 'Lớp học',        icon: 'fa-chalkboard',     route: '/classes' },
       { label: 'Bài tập',        icon: 'fa-clipboard-list', route: '/assignments' },
       { label: 'Chấm bài',       icon: 'fa-pen-to-square',  route: '/grading' },
+      { label: 'Tài liệu',       icon: 'fa-folder-open',    route: '/files' },
       { label: 'Cấu hình',       icon: 'fa-gear',           route: '/settings' },
     ];
     return [
@@ -225,6 +231,7 @@ export class AppComponent implements OnInit, OnDestroy {
       { label: 'Lớp học',         icon: '', route: '/classes' },
       { label: 'Bài tập',         icon: '', route: '/assignments' },
       { label: 'Chấm bài',        icon: '', route: '/grading' },
+      { label: 'Tài liệu & Tệp',  icon: '', route: '/files' },
       { label: 'Cấu hình',        icon: '', route: '/settings' },
       { label: 'Trang chủ',       icon: '', route: '/home' },
       { label: 'Học bài',         icon: '', route: '/learn' },
