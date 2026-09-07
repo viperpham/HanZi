@@ -130,7 +130,9 @@ public class SubmissionService(
         {
             var files = await fileAssets.ListAsync(
                 new Specification<FileAsset>()
-                    .Where(f => req.AttachmentIds.Contains(f.Id) && f.UploaderId == studentId)
+                    .Where(f => req.AttachmentIds.Contains(f.Id)
+                        && f.UploaderId == studentId
+                        && (f.SubmissionId == null || f.SubmissionId == sub.Id))
                     .Track(), ct);
             foreach (var f in files) f.SubmissionId = sub.Id;
         }

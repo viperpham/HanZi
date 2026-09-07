@@ -144,8 +144,13 @@ public class FileService(
 
     public async Task<Result> DetachFromLessonAsync(Guid id, CancellationToken ct = default)
     {
-        var asset = await repo.GetByIdAsync(id, ct);
+        var asset = await repo.FirstOrDefaultAsync(
+            new Specification<FileAsset>()
+                .Where(f => f.Id == id)
+                .Track(), ct);
         if (asset is null) return Result.Fail("Không tìm thấy tệp.", "NOT_FOUND");
+        if (asset.UploaderId != currentUser.UserId!.Value && currentUser.Role != UserRole.Admin)
+            return Result.Fail("Bạn không có quyền gỡ tệp này.", "FORBIDDEN");
         asset.LessonId = null;
         await uow.SaveChangesAsync(ct);
         return Result.Ok();

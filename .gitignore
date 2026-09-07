@@ -19,3 +19,4 @@ Thumbs.db
 # Env
 .env
 server/HanZi.Server/App_Data/
+server/HanZi.Server/UploadsData/

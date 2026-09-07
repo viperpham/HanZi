@@ -21,13 +21,13 @@ namespace HanZi.Server.Migrations
             // Backfill: user cũ lấy username từ phần trước @ của email.
             // Trùng local-part thì gắn hậu tố 4 ký tự id để đảm bảo duy nhất (index bên dưới).
             migrationBuilder.Sql(@"
-                UPDATE users SET ""Username"" = lower(split_part(""Email"", '@', 1));
+                UPDATE users SET ""Username"" = left(lower(split_part(""Email"", '@', 1)), 50);
 
                 UPDATE users u
                 SET ""Username"" = left(u.""Username"", 45) || '_' || substr(replace(u.""Id""::text, '-', ''), 1, 4)
                 FROM (
                     SELECT ""Id"", row_number() OVER (
-                        PARTITION BY lower(split_part(""Email"", '@', 1))
+                        PARTITION BY ""Username""
                         ORDER BY ""CreatedAt"") AS rn
                     FROM users
                 ) d
