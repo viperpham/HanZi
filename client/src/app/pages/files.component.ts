@@ -189,9 +189,9 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
                       class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   } @else {
                     <div class="flex flex-col items-center gap-2 p-2 text-center">
-                      <i [class]="'fa-solid ' + fileMeta(f).icon + ' text-4xl ' + fileMeta(f).color"></i>
+                      <i [class]="'fa-solid ' + FileService.fileMeta(f).icon + ' text-4xl ' + FileService.fileMeta(f).color"></i>
                       <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-base-200 text-base-content/60">
-                        {{ fileMeta(f).label }}
+                        {{ FileService.fileMeta(f).label }}
                       </span>
                     </div>
                   }
@@ -247,7 +247,7 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
                             <img [src]="FileService.viewUrl(f)" class="w-10 h-10 rounded-xl object-cover border border-base-200 shrink-0" alt="" />
                           } @else {
                             <div class="w-10 h-10 rounded-xl bg-base-200 flex items-center justify-center shrink-0">
-                              <i [class]="'fa-solid ' + fileMeta(f).icon + ' text-lg ' + fileMeta(f).color"></i>
+                              <i [class]="'fa-solid ' + FileService.fileMeta(f).icon + ' text-lg ' + FileService.fileMeta(f).color"></i>
                             </div>
                           }
                           <span class="font-semibold text-sm text-base-content truncate max-w-sm sm:max-w-md">
@@ -257,7 +257,7 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
                       </td>
                       <td>
                         <span class="badge badge-sm badge-ghost font-mono text-xs">
-                          {{ fileMeta(f).label }}
+                          {{ FileService.fileMeta(f).label }}
                         </span>
                       </td>
                       <td class="text-xs text-base-content/70 font-mono">{{ FileService.humanSize(f.sizeBytes) }}</td>
@@ -334,18 +334,6 @@ export class FilesComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
-  }
-
-  fileMeta(f: FileAsset): { icon: string; color: string; label: string } {
-    if (f.kind === 'Image') return { icon: 'fa-file-image', color: 'text-indigo-500', label: 'Hình ảnh' };
-    const ext = f.fileName.slice(f.fileName.lastIndexOf('.')).toLowerCase();
-    if (ext === '.pdf') return { icon: 'fa-file-pdf', color: 'text-rose-500', label: 'PDF' };
-    if (['.doc', '.docx'].includes(ext)) return { icon: 'fa-file-word', color: 'text-blue-500', label: 'Word' };
-    if (['.xls', '.xlsx'].includes(ext)) return { icon: 'fa-file-excel', color: 'text-emerald-500', label: 'Excel' };
-    if (['.ppt', '.pptx'].includes(ext)) return { icon: 'fa-file-powerpoint', color: 'text-amber-500', label: 'PowerPoint' };
-    if (['.zip', '.rar', '.7z'].includes(ext)) return { icon: 'fa-file-zipper', color: 'text-purple-500', label: 'Tệp nén' };
-    if (['.mp3', '.wav', '.m4a'].includes(ext)) return { icon: 'fa-file-audio', color: 'text-teal-500', label: 'Âm thanh' };
-    return { icon: 'fa-file-lines', color: 'text-base-content/50', label: 'Tài liệu' };
   }
 
   async onFilesChosen(ev: Event) {

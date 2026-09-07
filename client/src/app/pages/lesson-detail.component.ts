@@ -69,7 +69,7 @@ interface LessonFull { id: string; curriculumId: string; orderNo: number; titleV
                         <img [src]="FileService.viewUrl(f)" [alt]="f.fileName" class="h-12 w-12 rounded-xl object-cover border border-base-200 shrink-0" />
                       } @else {
                         <div class="h-12 w-12 rounded-xl bg-base-200/80 flex items-center justify-center shrink-0">
-                          <i [class]="'fa-solid ' + fileMeta(f).icon + ' text-xl ' + fileMeta(f).color"></i>
+                          <i [class]="'fa-solid ' + FileService.fileMeta(f).icon + ' text-xl ' + FileService.fileMeta(f).color"></i>
                         </div>
                       }
                       <div class="min-w-0 flex-1">
@@ -77,7 +77,7 @@ interface LessonFull { id: string; curriculumId: string; orderNo: number; titleV
                           {{ f.fileName }}
                         </p>
                         <div class="flex items-center gap-2 mt-1 text-[11px] text-base-content/40">
-                          <span class="badge badge-xs badge-ghost font-mono uppercase">{{ fileMeta(f).label }}</span>
+                          <span class="badge badge-xs badge-ghost font-mono uppercase">{{ FileService.fileMeta(f).label }}</span>
                           <span>{{ FileService.humanSize(f.sizeBytes) }}</span>
                         </div>
                       </div>
@@ -393,11 +393,15 @@ export class LessonDetailComponent implements OnInit {
   async addMaterials() {
     const picked = await this.picker.open({ title: 'Tài liệu bài học', accept: 'any', multiple: true });
     if (!picked?.length) return;
-    const ok = await this.files.attachLesson(this.lessonId, picked.map((f) => f.id));
-    if (ok) {
-      this.toast.success(`Đã thêm ${picked.length} tệp vào bài học.`);
+    const n = await this.files.attachLesson(this.lessonId, picked.map((f) => f.id));
+    if (n > 0) {
+      this.toast.success(`Đã thêm ${n} tệp vào bài học.`);
       this.files.forLesson(this.lessonId).then((xs) => this.materials.set(xs));
-    } else this.toast.error('Không gắn được tệp.');
+    } else if (n === 0) {
+      this.toast.info('Các tệp đã chọn không gắn được (có thể đã nằm trong bài học khác).');
+    } else {
+      this.toast.error('Không gắn được tệp.');
+    }
   }
 
   async removeMaterial(f: FileAsset) {
@@ -406,18 +410,6 @@ export class LessonDetailComponent implements OnInit {
       this.materials.update((xs) => xs.filter((x) => x.id !== f.id));
       this.toast.success('Đã gỡ khỏi bài học.');
     } else this.toast.error('Không gỡ được tệp.');
-  }
-
-  fileMeta(f: FileAsset): { icon: string; color: string; label: string } {
-    if (f.kind === 'Image') return { icon: 'fa-file-image', color: 'text-indigo-500', label: 'Hình ảnh' };
-    const ext = f.fileName.slice(f.fileName.lastIndexOf('.')).toLowerCase();
-    if (ext === '.pdf') return { icon: 'fa-file-pdf', color: 'text-rose-500', label: 'PDF' };
-    if (['.doc', '.docx'].includes(ext)) return { icon: 'fa-file-word', color: 'text-blue-500', label: 'Word' };
-    if (['.xls', '.xlsx'].includes(ext)) return { icon: 'fa-file-excel', color: 'text-emerald-500', label: 'Excel' };
-    if (['.ppt', '.pptx'].includes(ext)) return { icon: 'fa-file-powerpoint', color: 'text-amber-500', label: 'PowerPoint' };
-    if (['.zip', '.rar', '.7z'].includes(ext)) return { icon: 'fa-file-zipper', color: 'text-purple-500', label: 'Tệp nén' };
-    if (['.mp3', '.wav', '.m4a'].includes(ext)) return { icon: 'fa-file-audio', color: 'text-teal-500', label: 'Âm thanh' };
-    return { icon: 'fa-file-lines', color: 'text-base-content/50', label: 'Tài liệu' };
   }
 
   drillOptions(d: any): string[] {

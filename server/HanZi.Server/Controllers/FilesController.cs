@@ -8,7 +8,7 @@ namespace HanZi.Server.Controllers;
 
 /// <summary>
 /// Thư viện tệp: upload (multipart), list, xoá, gắn vào bài học.
-/// File lưu tại wwwroot/uploads/{guid}{ext} — phục vụ tĩnh qua /uploads/...
+/// File lưu tại UploadsData/{guid}{ext} (ngoài wwwroot) — xem/tải qua /api/files/{id}/raw có kiểm quyền.
 /// </summary>
 [ApiController]
 [Route("api/files")]
@@ -50,7 +50,7 @@ public class FilesController(IFileService service) : ControllerBase
         if (file.FileName.Contains('/') || file.FileName.Contains('\\') || file.FileName.Contains(".."))
             return BadRequest(new { success = false, error = "Tên tệp không hợp lệ." });
 
-        var res = await service.UploadAsync(file.OpenReadStream(), file.FileName, file.ContentType, file.Length, ct);
+        var res = await service.UploadAsync(file.OpenReadStream(), file.FileName, file.Length, ct);
         return res.ToActionResult();
     }
 

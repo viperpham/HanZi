@@ -56,9 +56,11 @@ export class FileService {
       .then((res) => res.success ? res.data : []);
   }
 
-  attachLesson(lessonId: string, fileIds: string[]): Promise<boolean> {
+  /** Gắn tệp vào bài học. Trả về số tệp đã gắn thật sự, -1 nếu lỗi
+   * (server bỏ qua tệp không sở hữu hoặc đã gắn bài học khác). */
+  attachLesson(lessonId: string, fileIds: string[]): Promise<number> {
     return firstValueFrom(this.http.post<any>('/api/files/attach-lesson', { lessonId, fileIds }))
-      .then((res) => !!res.success);
+      .then((res) => res.success ? (res.data?.length ?? 0) : -1);
   }
 
   detachLesson(id: string): Promise<boolean> {
@@ -74,6 +76,19 @@ export class FileService {
   /** URL xem file — thẻ <img> không gửi được header nên phải kèm token trên query. */
   static viewUrl(f: FileAsset): string {
     return `${f.url}?access_token=${localStorage.getItem('hz_token') ?? ''}`;
+  }
+
+  /** Icon / màu / nhãn hiển thị theo loại tệp — dùng chung mọi component. */
+  static fileMeta(f: FileAsset): { icon: string; color: string; label: string } {
+    if (f.kind === 'Image') return { icon: 'fa-file-image', color: 'text-indigo-500', label: 'Hình ảnh' };
+    const ext = f.fileName.slice(f.fileName.lastIndexOf('.')).toLowerCase();
+    if (ext === '.pdf') return { icon: 'fa-file-pdf', color: 'text-rose-500', label: 'PDF' };
+    if (['.doc', '.docx'].includes(ext)) return { icon: 'fa-file-word', color: 'text-blue-500', label: 'Word' };
+    if (['.xls', '.xlsx'].includes(ext)) return { icon: 'fa-file-excel', color: 'text-emerald-500', label: 'Excel' };
+    if (['.ppt', '.pptx'].includes(ext)) return { icon: 'fa-file-powerpoint', color: 'text-amber-500', label: 'PowerPoint' };
+    if (['.zip', '.rar', '.7z'].includes(ext)) return { icon: 'fa-file-zipper', color: 'text-purple-500', label: 'Tệp nén' };
+    if (['.mp3', '.wav', '.m4a'].includes(ext)) return { icon: 'fa-file-audio', color: 'text-teal-500', label: 'Âm thanh' };
+    return { icon: 'fa-file-lines', color: 'text-base-content/50', label: 'Tài liệu' };
   }
 
   /** "1.2 MB" */

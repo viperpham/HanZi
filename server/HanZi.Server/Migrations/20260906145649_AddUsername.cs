@@ -19,9 +19,17 @@ namespace HanZi.Server.Migrations
                 defaultValue: "");
 
             // Backfill: user cũ lấy username từ phần trước @ của email.
-            // Trùng local-part thì gắn hậu tố 4 ký tự id để đảm bảo duy nhất (index bên dưới).
+            // Email rỗng/không hợp lệ → fallback theo id; cắt còn 50 ký tự cho vừa cột varchar(50);
+            // cuối cùng gắn hậu tố id cho các username trùng để đảm bảo duy nhất (index bên dưới).
             migrationBuilder.Sql(@"
-                UPDATE users SET ""Username"" = left(lower(split_part(""Email"", '@', 1)), 50);
+                UPDATE users SET ""Username"" = lower(split_part(""Email"", '@', 1))
+                WHERE ""Email"" LIKE '%_@_%' AND split_part(""Email"", '@', 1) <> '';
+
+                UPDATE users
+                SET ""Username"" = 'user_' || substr(replace(""Id""::text, '-', ''), 1, 8)
+                WHERE ""Username"" = '';
+
+                UPDATE users SET ""Username"" = left(""Username"", 50);
 
                 UPDATE users u
                 SET ""Username"" = left(u.""Username"", 45) || '_' || substr(replace(u.""Id""::text, '-', ''), 1, 4)

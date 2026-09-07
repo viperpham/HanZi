@@ -19,4 +19,6 @@ Thumbs.db
 # Env
 .env
 server/HanZi.Server/App_Data/
+
+# User uploads (runtime data — không commit)
 server/HanZi.Server/UploadsData/

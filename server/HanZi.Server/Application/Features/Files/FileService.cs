@@ -11,7 +11,7 @@ using HanZi.Server.Application.Features.Files.Dtos;
 
 public interface IFileService
 {
-    Task<Result<FileAssetDto>> UploadAsync(Stream content, string fileName, string? contentType, long length, CancellationToken ct = default);
+    Task<Result<FileAssetDto>> UploadAsync(Stream content, string fileName, long length, CancellationToken ct = default);
     Task<Result<IReadOnlyList<FileAssetDto>>> ListMineAsync(CancellationToken ct = default);
     Task<Result<IReadOnlyList<FileAssetDto>>> ListForLessonAsync(Guid lessonId, CancellationToken ct = default);
     Task<Result<IReadOnlyList<FileAssetDto>>> ListForSubmissionAsync(Guid submissionId, CancellationToken ct = default);
@@ -59,7 +59,7 @@ public class FileService(
         [".rar"] = (FileKind.Document, 25 * 1024 * 1024),
     };
 
-    public async Task<Result<FileAssetDto>> UploadAsync(Stream content, string fileName, string? contentType, long length, CancellationToken ct = default)
+    public async Task<Result<FileAssetDto>> UploadAsync(Stream content, string fileName, long length, CancellationToken ct = default)
     {
         var ext = Path.GetExtension(fileName);
         if (!_allowed.TryGetValue(ext, out var rule))
@@ -86,13 +86,24 @@ public class FileService(
         {
             FileName = Path.GetFileName(fileName).Trim(),
             StoredName = storedName,
-            ContentType = contentType ?? "",
+            // KHÔNG tin Content-Type do client gửi — luôn suy từ phần mở rộng đã whitelist (chống XSS qua text/html)
+            ContentType = GuessContentType(ext),
             SizeBytes = length,
             Kind = rule.Kind,
             UploaderId = currentUser.UserId!.Value
         };
-        await repo.AddAsync(asset, ct);
-        await uow.SaveChangesAsync(ct);
+        try
+        {
+            await repo.AddAsync(asset, ct);
+            await uow.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Lưu metadata file upload thất bại: {File}", fileName);
+            // dọn file vật lý vừa ghi để không còn rác trên đĩa
+            try { File.Delete(Path.Combine(stored.FullName, storedName)); } catch { /* best effort */ }
+            return Result<FileAssetDto>.Fail("Không lưu được tệp — thử lại sau.");
+        }
 
         return Result<FileAssetDto>.Ok(ToDto(asset));
     }
@@ -131,11 +142,15 @@ public class FileService(
         var lesson = await lessons.GetByIdAsync(lessonId, ct);
         if (lesson is null) return Result<IReadOnlyList<FileAssetDto>>.Fail("Không tìm thấy bài học.", "NOT_FOUND");
 
+        // chỉ gắn file CHƯA đính bài học nào — không âm thầm "dời" file khỏi bài học cũ
         var files = await repo.ListAsync(
             new Specification<FileAsset>()
                 .Where(f => fileIds.Contains(f.Id)
+                    && f.LessonId == null
                     && (f.UploaderId == currentUser.UserId!.Value || currentUser.Role == UserRole.Admin))
                 .Track(), ct);
+        if (files.Count == 0)
+            return Result<IReadOnlyList<FileAssetDto>>.Fail("Không có tệp hợp lệ để gắn (tệp phải thuộc sở hữu của bạn và chưa gắn bài học khác).");
         foreach (var f in files) f.LessonId = lessonId;
         await uow.SaveChangesAsync(ct);
 
@@ -149,8 +164,11 @@ public class FileService(
                 .Where(f => f.Id == id)
                 .Track(), ct);
         if (asset is null) return Result.Fail("Không tìm thấy tệp.", "NOT_FOUND");
+
+        // chỉ chủ sở hữu hoặc Admin được gỡ
         if (asset.UploaderId != currentUser.UserId!.Value && currentUser.Role != UserRole.Admin)
             return Result.Fail("Bạn không có quyền gỡ tệp này.", "FORBIDDEN");
+
         asset.LessonId = null;
         await uow.SaveChangesAsync(ct);
         return Result.Ok();
@@ -193,9 +211,8 @@ public class FileService(
             return Result<(Stream, string, string)>.Fail("Tệp không còn trên máy chủ.", "NOT_FOUND");
 
         var stream = File.OpenRead(path);
-        var contentType = string.IsNullOrWhiteSpace(asset.ContentType) || asset.ContentType == "application/octet-stream"
-            ? GuessContentType(Path.GetExtension(asset.StoredName))
-            : asset.ContentType;
+        // luôn suy theo extension — legacy rows có thể chứa contentType từ client (không tin cậy)
+        var contentType = GuessContentType(Path.GetExtension(asset.StoredName));
         return Result<(Stream, string, string)>.Ok((stream, contentType, asset.FileName));
     }
 
@@ -226,6 +243,12 @@ public class FileService(
         // chỉ chủ sở hữu hoặc Admin được xoá
         if (asset.UploaderId != currentUser.UserId!.Value && currentUser.Role != UserRole.Admin)
             return Result.Fail("Bạn không có quyền xoá tệp này.", "FORBIDDEN");
+
+        // chặn xoá khi file đang được sử dụng — tránh vỡ ảnh/tài liệu ở bài học & bài nộp
+        if (asset.LessonId is not null)
+            return Result.Fail("Tệp đang được đính trong bài học — gỡ khỏi bài học trước khi xoá.", "IN_USE");
+        if (asset.SubmissionId is not null)
+            return Result.Fail("Tệp đã được nộp kèm bài tập — không thể xoá.", "IN_USE");
 
         repo.SoftDelete(asset);
         await uow.SaveChangesAsync(ct);
