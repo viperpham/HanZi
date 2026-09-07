@@ -18,8 +18,8 @@ public class FilesController(IFileService service) : ControllerBase
     private const long MaxUploadBytes = 26 * 1024 * 1024; // 25MB + dư dưỡng cho multipart
 
     [HttpGet("mine")]
-    public async Task<IActionResult> Mine(CancellationToken ct)
-        => (await service.ListMineAsync(ct)).ToActionResult();
+    public async Task<IActionResult> Mine([FromQuery] string? search, [FromQuery] string? kind, [FromQuery] string? sort, CancellationToken ct)
+        => (await service.ListMineAsync(search, kind, sort, ct)).ToActionResult();
 
     [HttpGet("lesson/{lessonId:guid}")]
     public async Task<IActionResult> ForLesson(Guid lessonId, CancellationToken ct)

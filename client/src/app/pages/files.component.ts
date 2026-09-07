@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FileService, FileAsset } from '../file.service';
@@ -114,46 +114,57 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
           <!-- Ô tìm kiếm -->
           <div class="relative w-full sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40"></i>
-            <input type="text" [(ngModel)]="searchQuery" placeholder="Tìm tệp theo tên…"
+            <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()" placeholder="Tìm tệp theo tên…"
               class="input input-bordered input-sm rounded-xl pl-9 pr-3 text-xs w-full focus:border-primary" />
           </div>
 
           <!-- Bộ lọc loại tệp -->
           <div class="flex flex-wrap items-center gap-1.5 grow sm:grow-0">
-            <button (click)="kindFilter = 'all'"
+            <button (click)="setKind('all')"
               class="btn btn-xs rounded-xl font-semibold border"
               [class]="kindFilter === 'all' ? 'btn-primary text-white' : 'btn-ghost text-base-content/60'">
-              Tất cả ({{ items().length }})
+              Tất cả ({{ statsItems().length }})
             </button>
-            <button (click)="kindFilter = 'Image'"
+            <button (click)="setKind('Image')"
               class="btn btn-xs rounded-xl font-semibold border"
               [class]="kindFilter === 'Image' ? 'btn-primary text-white' : 'btn-ghost text-base-content/60'">
-              🖼️ Ảnh ({{ imageCount() }})
+              Ảnh ({{ imageCount() }})
             </button>
-            <button (click)="kindFilter = 'Document'"
+            <button (click)="setKind('Document')"
               class="btn btn-xs rounded-xl font-semibold border"
               [class]="kindFilter === 'Document' ? 'btn-primary text-white' : 'btn-ghost text-base-content/60'">
-              📄 Tài liệu ({{ docCount() }})
+              Tài liệu ({{ docCount() }})
             </button>
-            <button (click)="kindFilter = 'Other'"
+            <button (click)="setKind('Other')"
               class="btn btn-xs rounded-xl font-semibold border"
               [class]="kindFilter === 'Other' ? 'btn-primary text-white' : 'btn-ghost text-base-content/60'">
-              📦 Khác
+              Khác
             </button>
           </div>
 
-          <!-- Chế độ xem Lưới / Danh sách -->
-          <div class="join bg-base-200/60 p-0.5 rounded-xl border border-base-200 ml-auto">
-            <button (click)="viewMode = 'grid'" class="join-item btn btn-xs btn-square"
-              [class]="viewMode === 'grid' ? 'btn-primary text-white' : 'btn-ghost text-base-content/50'"
-              title="Xem dạng thẻ lưới">
-              <i class="fa-solid fa-grip"></i>
-            </button>
-            <button (click)="viewMode = 'list'" class="join-item btn btn-xs btn-square"
-              [class]="viewMode === 'list' ? 'btn-primary text-white' : 'btn-ghost text-base-content/50'"
-              title="Xem dạng danh sách">
-              <i class="fa-solid fa-list"></i>
-            </button>
+          <!-- Sắp xếp + Chế độ xem Lưới / Danh sách -->
+          <div class="flex items-center gap-2 ml-auto">
+            <select [(ngModel)]="sortBy" (ngModelChange)="load()" class="select select-bordered select-sm rounded-xl text-xs focus:border-primary font-medium"
+              title="Sắp xếp danh sách">
+              <option value="newest">Mới nhất</option>
+              <option value="oldest">Cũ nhất</option>
+              <option value="name">Tên A → Z</option>
+              <option value="name_desc">Tên Z → A</option>
+              <option value="size">Dung lượng giảm dần</option>
+              <option value="size_asc">Dung lượng tăng dần</option>
+            </select>
+            <div class="join bg-base-200/60 p-0.5 rounded-xl border border-base-200">
+              <button (click)="viewMode = 'grid'" class="join-item btn btn-xs btn-square"
+                [class]="viewMode === 'grid' ? 'btn-primary text-white' : 'btn-ghost text-base-content/50'"
+                title="Xem dạng thẻ lưới">
+                <i class="fa-solid fa-grip"></i>
+              </button>
+              <button (click)="viewMode = 'list'" class="join-item btn btn-xs btn-square"
+                [class]="viewMode === 'list' ? 'btn-primary text-white' : 'btn-ghost text-base-content/50'"
+                title="Xem dạng danh sách">
+                <i class="fa-solid fa-list"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -164,23 +175,23 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
           <i class="fa-solid fa-spinner fa-spin text-3xl text-primary"></i>
           <p class="text-sm font-semibold text-base-content/50 mt-3">Đang tải danh sách tài liệu…</p>
         </div>
-      } @else if (filteredItems().length === 0) {
+      } @else if (items().length === 0) {
         <div class="card bg-base-100 border border-base-200 rounded-3xl p-16 text-center shadow-xs">
           <div class="w-16 h-16 mx-auto rounded-3xl bg-base-200/80 text-base-content/30 flex items-center justify-center text-3xl mb-3">
             <i class="fa-regular fa-folder-open"></i>
           </div>
           <p class="text-base font-bold text-base-content/70">
-            {{ items().length === 0 ? 'Kho tài liệu chưa có tệp nào' : 'Không tìm thấy tệp nào phù hợp' }}
+            {{ statsItems().length === 0 ? 'Kho tài liệu chưa có tệp nào' : 'Không tìm thấy tệp nào phù hợp' }}
           </p>
           <p class="text-xs text-base-content/40 mt-1 max-w-sm mx-auto">
-            {{ items().length === 0 ? 'Hãy kéo thả hoặc bấm nút "Tải lên tệp mới" phía trên để đưa tài liệu vào hệ thống.' : 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc bấm Tất cả để xem lại toàn bộ kho tệp.' }}
+            {{ statsItems().length === 0 ? 'Hãy kéo thả hoặc bấm nút "Tải lên tệp mới" phía trên để đưa tài liệu vào hệ thống.' : 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc bấm Tất cả để xem lại toàn bộ kho tệp.' }}
           </p>
         </div>
       } @else {
         <!-- Dạng Lưới (Grid View) -->
         @if (viewMode === 'grid') {
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            @for (f of filteredItems(); track f.id) {
+            @for (f of items(); track f.id) {
               <div class="card bg-base-100 rounded-2xl border border-base-200 hover:border-primary/40 hover:shadow-lg transition-all overflow-hidden group">
                 <!-- Khung Preview -->
                 <div class="h-36 w-full bg-base-200/50 relative flex items-center justify-center overflow-hidden">
@@ -239,7 +250,7 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
                   </tr>
                 </thead>
                 <tbody>
-                  @for (f of filteredItems(); track f.id) {
+                  @for (f of items(); track f.id) {
                     <tr class="hover:bg-base-200/40 transition-colors">
                       <td>
                         <div class="flex items-center gap-3">
@@ -287,7 +298,7 @@ const ACCEPT_ALL = '.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.pdf,.doc,.docx,.xls,.
   `,
   imports: [DatePipe, FormsModule]
 })
-export class FilesComponent implements OnInit {
+export class FilesComponent implements OnInit, OnDestroy {
   ACCEPT_ALL = ACCEPT_ALL;
   FileService = FileService;
 
@@ -296,44 +307,61 @@ export class FilesComponent implements OnInit {
   private modal = inject(ModalService);
 
   items = signal<FileAsset[]>([]);
+  statsItems = signal<FileAsset[]>([]);
   loading = signal(false);
   uploading = signal(false);
   progress = signal(0);
 
   searchQuery = '';
   kindFilter = 'all';
+  sortBy = 'newest';
   viewMode: 'grid' | 'list' = 'grid';
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  imageCount = computed(() => this.items().filter(f => f.kind === 'Image').length);
-  docCount = computed(() => this.items().filter(f => f.kind === 'Document').length);
+  // thống kê tính trên TOÀN BỘ kho (không theo bộ lọc) — items() có thể đang lọc
+  imageCount = computed(() => this.statsItems().filter(f => f.kind === 'Image').length);
+  docCount = computed(() => this.statsItems().filter(f => f.kind === 'Document').length);
   totalSize = computed(() => {
-    const totalBytes = this.items().reduce((sum, f) => sum + (f.sizeBytes || 0), 0);
+    const totalBytes = this.statsItems().reduce((sum, f) => sum + (f.sizeBytes || 0), 0);
     return FileService.humanSize(totalBytes);
   });
 
-  filteredItems = computed(() => {
-    let list = this.items();
-    if (this.kindFilter !== 'all') {
-      list = list.filter(f => f.kind === this.kindFilter);
-    }
-    if (this.searchQuery.trim()) {
-      const q = this.searchQuery.trim().toLowerCase();
-      list = list.filter(f => f.fileName.toLowerCase().includes(q));
-    }
-    return list;
-  });
-
   ngOnInit() {
+    this.load();
+    this.loadStats();
+  }
+
+  ngOnDestroy() {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+  }
+
+  /** Gõ tìm kiếm — debounce 350ms rồi gọi backend. */
+  onSearch() {
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.load(), 350);
+  }
+
+  setKind(k: string) {
+    this.kindFilter = k;
     this.load();
   }
 
   async load() {
     this.loading.set(true);
     try {
-      this.items.set(await this.files.mine());
+      this.items.set(await this.files.mine({
+        search: this.searchQuery.trim() || undefined,
+        kind: this.kindFilter !== 'all' ? this.kindFilter : undefined,
+        sort: this.sortBy,
+      }));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** Toàn bộ kho (không filter) cho thẻ thống kê — gọi 1 lần đầu + sau upload/xoá. */
+  async loadStats() {
+    this.statsItems.set(await this.files.mine());
   }
 
   async onFilesChosen(ev: Event) {
@@ -361,6 +389,7 @@ export class FilesComponent implements OnInit {
 
     if (uploadedAssets.length) {
       this.items.update(xs => [...uploadedAssets, ...xs]);
+      this.statsItems.update(xs => [...uploadedAssets, ...xs]);
       this.toast.success(`Đã tải lên ${uploadedAssets.length} tệp thành công.`);
     }
     if (errors.length) {
@@ -372,6 +401,7 @@ export class FilesComponent implements OnInit {
     if (!(await this.modal.confirm(`Xoá vĩnh viễn tệp <b>${f.fileName}</b> khỏi kho tài liệu?`, 'Xoá tệp', true))) return;
     if (await this.files.remove(f.id)) {
       this.items.update(xs => xs.filter(x => x.id !== f.id));
+      this.statsItems.update(xs => xs.filter(x => x.id !== f.id));
       this.toast.success('Đã xoá tệp thành công.');
     } else {
       this.toast.error('Xoá tệp thất bại.');

@@ -46,8 +46,14 @@ export class FileService {
     });
   }
 
-  mine(): Promise<FileAsset[]> {
-    return firstValueFrom(this.http.get<any>('/api/files/mine'))
+  /** Danh sách tệp của mình — hỗ trợ tìm kiếm/lọc/sắp xếp phía server. */
+  mine(params: { search?: string; kind?: string; sort?: string } = {}): Promise<FileAsset[]> {
+    const qs = new URLSearchParams();
+    if (params.search) qs.set('search', params.search);
+    if (params.kind) qs.set('kind', params.kind);
+    if (params.sort) qs.set('sort', params.sort);
+    const q = qs.toString();
+    return firstValueFrom(this.http.get<any>(`/api/files/mine${q ? `?${q}` : ''}`))
       .then((res) => res.success ? res.data : []);
   }
 
